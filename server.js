@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * Kimi Code Render Server — v3 with proper HTTP and WebSocket proxy
+ * Kimi Code Render Server — v5 (http-proxy for WebSocket support)
+ * Spawns kimi daemon on internal port, uses http-proxy for reliable
+ * HTTP + WebSocket proxying. Health endpoint separate.
  */
 const { spawn } = require("child_process");
 const http = require("http");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
-const net = require("net");
 
 const PORT = parseInt(process.env.PORT) || 10000;
 const KIMI_PORT = 58630;
@@ -29,7 +30,7 @@ if (!fs.existsSync(configPath)) {
   }
 }
 
-// Allow all known Render hosts for WebSocket
+// Allow all known hosts for WebSocket
 process.env.KIMI_CODE_ALLOWED_HOSTS = ".onrender.com,localhost,127.0.0.1";
 process.env.KIMI_CODE_CORS_ORIGINS = "*";
 
@@ -59,105 +60,110 @@ kimiProc.on("exit", (code, sig) => {
   setTimeout(() => process.exit(1), 3000);
 });
 
-// Helper: proxy an HTTP request to the Kimi daemon
-function proxyHttp(req, res) {
-  const opts = {
-    hostname: "127.0.0.1",
-    port: KIMI_PORT,
-    path: req.url,
-    method: req.method,
-    headers: { ...req.headers, connection: "close" },
-  };
-  const pr = http.request(opts, prRes => {
-    const headers = { ...prRes.headers };
-    delete headers["transfer-encoding"];
-    res.writeHead(prRes.statusCode, headers);
-    prRes.pipe(res);
-  });
-  pr.on("error", err => {
-    console.error("Proxy error: " + err.message);
-    if (req.url && req.url.startsWith("/api/")) {
-      res.writeHead(503, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ code: 50001, msg: "Kimi daemon is starting up", data: null }));
-    } else {
-      res.writeHead(200, { "Content-Type": "text/html" });
-      res.end('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Kimi Code</title><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:#0f0f0f;color:#e0e0e0}div{text-align:center}.loading{width:20px;height:20px;border:3px solid #333;border-radius:50%;border-top-color:#6c5ce7;animation:spin 1s linear infinite;margin:10px auto}@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div><div class="loading"></div><h2>Kimi Code</h2><p>Starting...</p><script>setTimeout(()=>location.reload(),5000)</script></div></body></html>');
-    }
-  });
-  req.pipe(pr);
+// Load http-proxy
+let httpProxy;
+try {
+  httpProxy = require("http-proxy");
+} catch (e) {
+  console.error("http-proxy not available, falling back to raw proxy. Install with: npm install http-proxy");
 }
 
-// HTTP server — proxy all requests to Kimi daemon
+let proxy;
+if (httpProxy) {
+  proxy = httpProxy.createProxyServer({
+    target: { host: "127.0.0.1", port: KIMI_PORT },
+    ws: true,
+    changeOrigin: true,
+    proxyTimeout: 30000,
+    timeout: 30000,
+  });
+
+  proxy.on("error", (err, req, res) => {
+    console.error("Proxy error:", err.message);
+    if (res && typeof res.writeHead === "function") {
+      if (req.url && req.url.startsWith("/api/")) {
+        res.writeHead(503, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ code: 50001, msg: "Kimi daemon is starting up", data: null }));
+      } else {
+        res.writeHead(200, { "Content-Type": "text/html" });
+        res.end(getLoadingHtml());
+      }
+    }
+  });
+}
+
+function getLoadingHtml() {
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Kimi Code</title><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:#0f0f0f;color:#e0e0e0}div{text-align:center}.loading{width:20px;height:20px;border:3px solid #333;border-radius:50%;border-top-color:#6c5ce7;animation:spin 1s linear infinite;margin:10px auto}@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div><div class="loading"></div><h2>Kimi Code</h2><p>Starting...</p><script>setTimeout(()=>location.reload(),5000)</script></div></body></html>';
+}
+
+// HTTP server with proxy
 const server = http.createServer((req, res) => {
   if (req.url === "/health" || req.url === "/_health") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "healthy", uptime: process.uptime(), kimi_alive: true }));
+    res.end(JSON.stringify({ status: "healthy", uptime: process.uptime(), kimi_alive: true, proxy: !!proxy }));
     return;
   }
-  proxyHttp(req, res);
+  if (proxy) {
+    proxy.web(req, res, { target: { host: "127.0.0.1", port: KIMI_PORT } });
+  } else {
+    // Fallback: manual HTTP proxy
+    const opts = {
+      hostname: "127.0.0.1",
+      port: KIMI_PORT,
+      path: req.url,
+      method: req.method,
+      headers: { ...req.headers, connection: "close" },
+    };
+    const pr = http.request(opts, prRes => {
+      const headers = { ...prRes.headers };
+      delete headers["transfer-encoding"];
+      res.writeHead(prRes.statusCode, headers);
+      prRes.pipe(res);
+    });
+    pr.on("error", err => {
+      console.error("Proxy error:", err.message);
+      if (req.url && req.url.startsWith("/api/")) {
+        res.writeHead(503, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ code: 50001, msg: "Kimi daemon is starting up", data: null }));
+      } else {
+        res.writeHead(200, { "Content-Type": "text/html" });
+        res.end(getLoadingHtml());
+      }
+    });
+    req.pipe(pr);
+  }
 });
 
-// WebSocket proxy using http.request upgrade event
+// WebSocket upgrade handling
 server.on("upgrade", (req, socket, head) => {
-  console.error("WS upgrade: " + req.url);
-  
-  // Forward the WebSocket upgrade to the Kimi daemon
-  const opts = {
-    hostname: "127.0.0.1",
-    port: KIMI_PORT,
-    path: req.url,
-    method: "GET",
-    headers: { ...req.headers },
-  };
-  
-  const backendReq = http.request(opts);
-  
-  backendReq.on("upgrade", (backendRes, backendSocket, backendHead) => {
-    console.error("WS upgrade successful, piping");
-    // Forward the upgrade response is implicit when upgrade event fires
-    // Pipe WebSocket data bidirectionally
-    backendSocket.pipe(socket);
-    socket.pipe(backendSocket);
-    
-    // Forward any buffered head data
-    if (backendHead && backendHead.length > 0) {
-      socket.write(backendHead);
-    }
-    
-    // Error handling
-    backendSocket.on("error", err => {
-      console.error("Backend WS error: " + err.message);
-      try { socket.end(); } catch(e) {}
+  if (proxy) {
+    // Use http-proxy for WebSocket (reliable)
+    proxy.ws(req, socket, head, { target: { host: "127.0.0.1", port: KIMI_PORT } });
+  } else {
+    // Fallback: use http.request with upgrade event
+    const opts = {
+      hostname: "127.0.0.1",
+      port: KIMI_PORT,
+      path: req.url,
+      method: "GET",
+      headers: req.headers,
+    };
+    const pr = http.request(opts);
+    pr.on("upgrade", (proxyRes, proxySocket, proxyHead) => {
+      socket.write(proxyHead || Buffer.alloc(0));
+      proxySocket.pipe(socket);
+      socket.pipe(proxySocket);
     });
-    socket.on("error", err => {
-      console.error("Client WS error: " + err.message);
-      try { backendSocket.end(); } catch(e) {}
-    });
-  });
-  
-  backendReq.on("error", err => {
-    console.error("WS proxy error: " + err.message);
-    try {
+    pr.on("error", () => {
       socket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
       socket.end();
-    } catch(e) {}
-  });
-  
-  backendReq.on("response", () => {
-    // Unexpected: backend sent HTTP response instead of upgrade
-    console.error("WS: backend sent HTTP response instead of upgrade");
-    try {
-      socket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
-      socket.end();
-    } catch(e) {}
-  });
-  
-  // End the request (this triggers sending the upgrade request)
-  backendReq.end();
+    });
+    pr.end();
+  }
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.error("Server on :" + PORT + ", Kimi on :" + KIMI_PORT);
+  console.error("Server on :" + PORT + ", Kimi on :" + KIMI_PORT + ", proxy=" + !!proxy);
 });
 
 process.on("SIGTERM", () => {
