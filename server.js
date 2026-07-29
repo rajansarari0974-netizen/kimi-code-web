@@ -4085,7 +4085,7 @@ setTimeout(loadSystemInfo,300);
           const tunnelOrigin = (() => { try { return tunnelUrl ? new URL(tunnelUrl).origin : null; } catch(e) { return null; } })();
           let wsRedirect;
           if (tunnelOrigin) {
-            wsRedirect = '<script>\n(function(){\n  var targetOrigin = ' + JSON.stringify(tunnelOrigin) + ';\n  var pageOrigin = window.location.origin;\n  if (targetOrigin === pageOrigin) return;\n  var NativeWS = window.WebSocket;\n  window.WebSocket = function(url, protocols) {\n    if (typeof url === "string" && (url.startsWith(pageOrigin + "/api/v1/ws") || url.startsWith("/api/v1/ws"))) {\n      var wsPath = url.includes("/api/v1/ws") ? url.substring(url.indexOf("/api/v1/ws")) : url;\n      url = targetOrigin + wsPath;\n    }\n    return new NativeWS(url, protocols);\n  };\n  window.WebSocket.prototype = NativeWS.prototype;\n  window.WebSocket.CONNECTING = 0;\n  window.WebSocket.OPEN = 1;\n  window.WebSocket.CLOSING = 2;\n  window.WebSocket.CLOSED = 3;\n})();\n</script>';
+            wsRedirect = '<script>\n(function(){\n  var targetOrigin = ' + JSON.stringify(tunnelOrigin) + ';\n  var pageOrigin = window.location.origin;\n  if (targetOrigin === pageOrigin) return;\n  var NativeWS = window.WebSocket;\n  window.WebSocket = function(url, protocols) {\n    if (typeof url === "string" && (url.startsWith(pageOrigin + "/ws") || url.startsWith("/ws"))) {\n      var wsPath = url.includes("/ws") ? url.substring(url.indexOf("/ws")) : url;\n      url = targetOrigin + wsPath;\n    }\n    return new NativeWS(url, protocols);\n  };\n  window.WebSocket.prototype = NativeWS.prototype;\n  window.WebSocket.CONNECTING = 0;\n  window.WebSocket.OPEN = 1;\n  window.WebSocket.CLOSING = 2;\n  window.WebSocket.CLOSED = 3;\n})();\n</script>';
           } else {
             wsRedirect = '<!-- WS direct: tunnel not available -->';
           }
@@ -4927,4 +4927,5 @@ process.on('SIGTERM', () => {
   }
   setTimeout(() => process.exit(0), 3000);
 });
+
 
