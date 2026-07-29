@@ -15,8 +15,7 @@ RUN npx --yes @moonshot-ai/kimi-code --version 2>/dev/null || true
 # Copy app source
 COPY . .
 
-# Fixed auth token (matches what server.js uses)
-ENV KIMI_CODE_PASSWORD=VNE1wpc7gqGD1THY-Np6WRPYdU5LlOrk3ICvxsy_N58
+# Allow all Render hosts
 ENV KIMI_CODE_ALLOWED_HOSTS=.onrender.com,localhost,127.0.0.1
 
 EXPOSE 10000
@@ -27,3 +26,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 # Minimal server — spawns kimi web internally, provides /health, proxies
 CMD ["node", "server.js"]
+
