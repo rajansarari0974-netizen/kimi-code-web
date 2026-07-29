@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Kimi Code Render Server — Minimal reliable version
- * Spawns kimi web on internal port, provides /health, proxies requests.
+ * Kimi Code Render Server — v3 with proper HTTP and WebSocket proxy
  */
 const { spawn } = require("child_process");
 const http = require("http");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
+const net = require("net");
 
 const PORT = parseInt(process.env.PORT) || 10000;
 const KIMI_PORT = 58630;
@@ -59,13 +59,8 @@ kimiProc.on("exit", (code, sig) => {
   setTimeout(() => process.exit(1), 3000);
 });
 
-// HTTP server — health check + proxy to Kimi
-const server = http.createServer((req, res) => {
-  if (req.url === "/health" || req.url === "/_health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "healthy", uptime: process.uptime(), kimi_alive: true }));
-    return;
-  }
+// Helper: proxy an HTTP request to the Kimi daemon
+function proxyHttp(req, res) {
   const opts = {
     hostname: "127.0.0.1",
     port: KIMI_PORT,
@@ -85,30 +80,80 @@ const server = http.createServer((req, res) => {
       res.writeHead(503, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ code: 50001, msg: "Kimi daemon is starting up", data: null }));
     } else {
-      const html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Kimi Code</title><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:#0f0f0f;color:#e0e0e0}div{text-align:center}.loading{width:20px;height:20px;border:3px solid #333;border-radius:50%;border-top-color:#6c5ce7;animation:spin 1s linear infinite;margin:10px auto}@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div><div class=\"loading\"></div><h2>Kimi Code</h2><p>Starting...</p><script>setTimeout(()=>location.reload(),5000)</script></div></body></html>";
       res.writeHead(200, { "Content-Type": "text/html" });
-      res.end(html);
+      res.end('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Kimi Code</title><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:#0f0f0f;color:#e0e0e0}div{text-align:center}.loading{width:20px;height:20px;border:3px solid #333;border-radius:50%;border-top-color:#6c5ce7;animation:spin 1s linear infinite;margin:10px auto}@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div><div class="loading"></div><h2>Kimi Code</h2><p>Starting...</p><script>setTimeout(()=>location.reload(),5000)</script></div></body></html>');
     }
   });
   req.pipe(pr);
+}
+
+// HTTP server — proxy all requests to Kimi daemon
+const server = http.createServer((req, res) => {
+  if (req.url === "/health" || req.url === "/_health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "healthy", uptime: process.uptime(), kimi_alive: true }));
+    return;
+  }
+  proxyHttp(req, res);
 });
 
-// WebSocket proxy
+// WebSocket proxy using http.request upgrade event
 server.on("upgrade", (req, socket, head) => {
-  const proxySocket = require("net").connect(KIMI_PORT, "127.0.0.1", () => {
-    proxySocket.write(req.method + " " + req.url + " HTTP/1.1\r\n");
-    for (const [k, v] of Object.entries(req.headers)) {
-      proxySocket.write(k + ": " + v + "\r\n");
+  console.error("WS upgrade: " + req.url);
+  
+  // Forward the WebSocket upgrade to the Kimi daemon
+  const opts = {
+    hostname: "127.0.0.1",
+    port: KIMI_PORT,
+    path: req.url,
+    method: "GET",
+    headers: { ...req.headers },
+  };
+  
+  const backendReq = http.request(opts);
+  
+  backendReq.on("upgrade", (backendRes, backendSocket, backendHead) => {
+    console.error("WS upgrade successful, piping");
+    // Forward the upgrade response is implicit when upgrade event fires
+    // Pipe WebSocket data bidirectionally
+    backendSocket.pipe(socket);
+    socket.pipe(backendSocket);
+    
+    // Forward any buffered head data
+    if (backendHead && backendHead.length > 0) {
+      socket.write(backendHead);
     }
-    proxySocket.write("\r\n");
-    proxySocket.write(head);
-    proxySocket.pipe(socket);
-    socket.pipe(proxySocket);
+    
+    // Error handling
+    backendSocket.on("error", err => {
+      console.error("Backend WS error: " + err.message);
+      try { socket.end(); } catch(e) {}
+    });
+    socket.on("error", err => {
+      console.error("Client WS error: " + err.message);
+      try { backendSocket.end(); } catch(e) {}
+    });
   });
-  proxySocket.on("error", () => {
-    socket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
-    socket.end();
+  
+  backendReq.on("error", err => {
+    console.error("WS proxy error: " + err.message);
+    try {
+      socket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
+      socket.end();
+    } catch(e) {}
   });
+  
+  backendReq.on("response", () => {
+    // Unexpected: backend sent HTTP response instead of upgrade
+    console.error("WS: backend sent HTTP response instead of upgrade");
+    try {
+      socket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
+      socket.end();
+    } catch(e) {}
+  });
+  
+  // End the request (this triggers sending the upgrade request)
+  backendReq.end();
 });
 
 server.listen(PORT, "0.0.0.0", () => {
