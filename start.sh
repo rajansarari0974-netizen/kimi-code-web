@@ -1,20 +1,17 @@
 #!/bin/bash
 set -e
 
-# Generate unique token if not set
-if [ -z "$KIMI_CODE_PASSWORD" ]; then
-    KIMI_CODE_PASSWORD=$(head -c 32 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 32)
-    export KIMI_CODE_PASSWORD
-fi
-
-# Save token to a file
-echo "$KIMI_CODE_PASSWORD" > /app/kimi-token.txt
+# Use fixed token for Render
+KIMI_CODE_PASSWORD="${KIMI_CODE_PASSWORD:-VNE1wpc7gqGD1THY-Np6WRPYdU5LlOrk3ICvxsy_N58}"
+export KIMI_CODE_PASSWORD
 
 echo "============================================"
-echo "  Kimi Code Server v0.29.1"
+echo "  Kimi Code Server"
 echo "  Port: ${PORT:-10000}"
-echo "  Token: $KIMI_CODE_PASSWORD"
 echo "============================================"
+
+# Update to latest version
+npm install @moonshot-ai/kimi-code@latest 2>&1 | tail -3
 
 # Find kimi binary
 if [ -f "node_modules/.bin/kimi" ]; then
@@ -30,7 +27,5 @@ elif command -v npx &>/dev/null; then
     exec npx --yes @moonshot-ai/kimi-code web --no-open --port "${PORT:-10000}" --host "0.0.0.0"
 else
     echo "ERROR: No kimi binary found!"
-    ls -la node_modules/.bin/ 2>/dev/null || echo "(node_modules/.bin not found)"
-    ls -la node_modules/@moonshot-ai/ 2>/dev/null || echo "(@moonshot-ai not found)"
     exit 1
 fi
