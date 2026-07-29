@@ -758,10 +758,10 @@ function restoreFromPentaract() {
       -H "Authorization: Bearer ${token}"`, { timeout: 15000, encoding: 'utf8' });
     if (listResult.trim().startsWith('<')) throw new Error('Cloudflare challenge on list');
     const data = JSON.parse(listResult);
-    if (!data.files || data.files.length === 0) { log('ℹ️ No remote backups found'); return false; }
+    if (!Array.isArray(data) || data.length === 0) { log('ℹ️ No remote backups found'); return false; }
     // Filter to only tar.gz files — skip tiny (< 3KB = config-only), allow up to 100MB
-    const backups = data.files.filter(f => f.path.endsWith('.tar.gz') && f.size > 3000 && f.size < 100000000);
-    if (data.files.length > backups.length) log(`⚠️ Filtered out ${data.files.length - backups.length} backup files (size limits)`);
+    const backups = data.filter(f => f.path.endsWith('.tar.gz') && f.size > 3000 && f.size < 100000000);
+    if (data.length > backups.length) log(`⚠️ Filtered out ${data.length - backups.length} backup files (size limits)`);
     if (backups.length === 0) { log('ℹ️ No valid backup files found'); return false; }
     // Sort by SIZE DESCENDING (largest first — most sessions, most complete backup)
     // This ensures we pick the clean/full backup (52KB) over partial ones (24KB)
@@ -1203,10 +1203,10 @@ function syncBothLocations() {
       -H "Authorization: Bearer ${token}"`, { timeout: 15000, encoding: 'utf8' });
     if (!listResult.trim().startsWith('<')) {
       const data = JSON.parse(listResult);
-      if (data.files && data.files.length > 0) {
-        data.files.sort((a, b) => b.path.localeCompare(a.path));
+      if (Array.isArray(data) && data.length > 0) {
+        data.sort((a, b) => b.path.localeCompare(a.path));
         hasRemote = true;
-        remoteName = data.files[0].path;
+        remoteName = data[0].path;
       }
     }
   } catch (e) {}
