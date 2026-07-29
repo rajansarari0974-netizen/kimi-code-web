@@ -1977,7 +1977,9 @@ const server = http.createServer((req, res) => {
       tunnel_alive: tunnelAlive,
       message: tunnelUrl
         ? `Direct daemon URL (bypasses proxy, supports WS natively): ${tunnelUrl}`
-        : 'Tunnel not yet ready — wait ~30s and refresh'
+        : process.env.RENDER_EXTERNAL_URL
+          ? 'Tunnel disabled — using Render public URL with native WebSocket support'
+          : 'Tunnel not yet ready — wait ~30s and refresh'
     }));
   }
 
@@ -3615,7 +3617,9 @@ setTimeout(loadSystemInfo,300);
       is_ready: !!tunnelUrl && tunnelAlive,
       message: tunnelUrl
         ? 'Tunnel available at: ' + tunnelUrl
-        : 'Tunnel not yet ready'
+        : process.env.RENDER_EXTERNAL_URL
+          ? 'Tunnel disabled — using Render public URL'
+          : 'Tunnel not yet ready'
     }));
   }
 
