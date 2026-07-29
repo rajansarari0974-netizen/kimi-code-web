@@ -4887,10 +4887,14 @@ server.listen(PORT, '0.0.0.0', () => {
   startKeepalive();
   // Periodic daemon health check (every 30s) so WebSocket handler has fresh flag
   setInterval(checkDaemon, 30000);
-  // Start Cloudflare Tunnel after 10s (gives Kimi daemon time to start)
-  setTimeout(startCloudflareTunnel, 10000);
   log('💾 Backup system v2 — local + Pentaract dual backup active');
-  log('🚇 Cloudflare Tunnel will start in 10s — check /tunnel-url for the URL');
+  // Skip Cloudflare Tunnel on Render (Render already has public URL with WS support)
+  if (!process.env.RENDER_EXTERNAL_URL) {
+    log('🚇 Cloudflare Tunnel will start in 10s — check /tunnel-url for the URL');
+    setTimeout(startCloudflareTunnel, 10000);
+  } else {
+    log('⏭️ Skipping Cloudflare Tunnel (running on Render with public URL)');
+  }
   // Start backup scheduler after 20s (gives Kimi daemon time to initialize)
   setTimeout(() => {
     // Ensure workspace mappings exist before restore/index regeneration
