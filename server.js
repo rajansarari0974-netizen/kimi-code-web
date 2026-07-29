@@ -491,8 +491,8 @@ function pentaractLogin() {
       -H "Accept: application/json, text/plain, */*" \
       -H "Accept-Language: en-US,en;q=0.9" \
       -X POST "${PENTARACT_URL}/api/auth/login" \
-      -H "Content-Type: application/x-www-form-urlencoded" \
-      -d "email=${encodeURIComponent(PENTARACT_EMAIL)}&password=${encodeURIComponent(PENTARACT_PASS)}"`, {
+      -H "Content-Type: application/json" \
+      -d '{"email":"'"${PENTARACT_EMAIL}"'","password":"'"${PENTARACT_PASS}"'"}'`, {
       timeout: 20000, encoding: 'utf8'
     });
     if (result.trim().startsWith('<')) throw new Error('Got HTML instead of JSON (Cloudflare challenge)');
