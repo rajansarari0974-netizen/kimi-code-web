@@ -656,7 +656,7 @@ function performRemoteBackupStreaming(token, includes) {
     const options = {
       hostname: parsedUrl.hostname,
       port: 443,
-      path: `/api/files/${BACKUP_STORAGE_ID}/upload`,
+      path: `/api/storages/${BACKUP_STORAGE_ID}/files/upload`,
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -736,7 +736,7 @@ function performRemoteBackupStreaming(token, includes) {
 function performRemoteBackupCurl(localTarFile) {
   try {
     const token = pentaractLogin();
-    execSync(`curl ${CURL_FLAGS} -X POST "${PENTARACT_URL}/api/files/${BACKUP_STORAGE_ID}/upload" \
+    execSync(`curl ${CURL_FLAGS} -X POST "${PENTARACT_URL}/api/storages/${BACKUP_STORAGE_ID}/files/upload" \
       -H "Authorization: Bearer ${token}" \
       -F "file=@${localTarFile}" -F "path=/backups/"`, { timeout: 60000, encoding: 'utf8' });
     log(`✅ Pentaract remote backup uploaded (curl fallback)`);
@@ -754,7 +754,7 @@ function performRemoteBackup(localTarFile) {
 function restoreFromPentaract() {
   try {
     const token = pentaractLogin();
-    const listResult = execSync(`curl ${CURL_FLAGS} "${PENTARACT_URL}/api/files/${BACKUP_STORAGE_ID}/tree?path=backups" \
+    const listResult = execSync(`curl ${CURL_FLAGS} "${PENTARACT_URL}/api/storages/${BACKUP_STORAGE_ID}/files/tree/backups" \
       -H "Authorization: Bearer ${token}"`, { timeout: 15000, encoding: 'utf8' });
     if (listResult.trim().startsWith('<')) throw new Error('Cloudflare challenge on list');
     const data = JSON.parse(listResult);
@@ -772,7 +772,7 @@ function restoreFromPentaract() {
       const bk = backups[i];
       log(`🔄 Trying backup ${i+1}/${Math.min(backups.length, 20)}: ${bk.path} (${(bk.size/1024).toFixed(1)}KB)`);
       try {
-        execSync(`curl ${CURL_FLAGS} "${PENTARACT_URL}/api/files/${BACKUP_STORAGE_ID}/download/${bk.path}" \
+        execSync(`curl ${CURL_FLAGS} "${PENTARACT_URL}/api/storages/${BACKUP_STORAGE_ID}/files/download/${bk.path}" \
           -H "Authorization: Bearer ${token}" -o "${tempFile}"`, { timeout: 120000 });
         const buf = fs.readFileSync(tempFile);
         if (buf[0] !== 0x1f || buf[1] !== 0x8b) { log(`⚠️ Not valid tar.gz: ${bk.path}`); continue; }
@@ -1199,7 +1199,7 @@ function syncBothLocations() {
   let remoteName = null;
   try {
     const token = pentaractLogin();
-    const listResult = execSync(`curl ${CURL_FLAGS} "${PENTARACT_URL}/api/files/${BACKUP_STORAGE_ID}/tree?path=backups" \
+    const listResult = execSync(`curl ${CURL_FLAGS} "${PENTARACT_URL}/api/storages/${BACKUP_STORAGE_ID}/files/tree/backups" \
       -H "Authorization: Bearer ${token}"`, { timeout: 15000, encoding: 'utf8' });
     if (!listResult.trim().startsWith('<')) {
       const data = JSON.parse(listResult);
@@ -4927,5 +4927,3 @@ process.on('SIGTERM', () => {
   }
   setTimeout(() => process.exit(0), 3000);
 });
-
-
