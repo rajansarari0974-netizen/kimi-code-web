@@ -39,10 +39,10 @@ let tunnelProc = null;
 let tunnelUrl = null;
 
 // ====== PENTARACT BACKUP CONSTANTS ======
-const PENTARACT_URL = process.env.PENTARACT_URL || 'https://pentaract-f4ga.onrender.com';
-const PENTARACT_EMAIL = process.env.PENTARACT_EMAIL || 'admin@pentaract.com';
-const PENTARACT_PASS = process.env.PENTARACT_PASS || 'admin123';
-const BACKUP_STORAGE_ID = process.env.BACKUP_STORAGE_ID || 'd875641e-ac08-4794-9d3b-823dd2705981';
+const PENTARACT_URL = process.env.PENTARACT_URL || 'https://pentaract-i2os.onrender.com';
+const PENTARACT_EMAIL = process.env.PENTARACT_EMAIL || 'admin@pentaract.io';
+const PENTARACT_PASS = process.env.PENTARACT_PASS || 'Px9kL2mN7vQ4wR8tY5uI1oP3sA6dF0gH';
+const BACKUP_STORAGE_ID = process.env.BACKUP_STORAGE_ID || '516cb035-eb2f-4fce-842e-2c9a7d66458d';
 const BACKUP_INTERVAL_MIN = parseInt(process.env.BACKUP_INTERVAL_MIN) || 30;
 const KIMI_HOME = process.env['KIMI_CODE_HOME'] || path.join(os.homedir(), '.kimi-code');
 
