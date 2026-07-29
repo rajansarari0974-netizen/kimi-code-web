@@ -28,8 +28,8 @@ const kimiPaths = [
 const kimiBin = kimiPaths.find(p => { try { return fs.existsSync(p); } catch(e) { return false; } }) || "npx";
 
 const args = kimiBin === "npx"
-  ? ["--yes", "@moonshot-ai/kimi-code", "web", "--no-open", "--port", String(KIMI_PORT), "--host", "0.0.0.0"]
-  : ["web", "--no-open", "--port", String(KIMI_PORT), "--host", "0.0.0.0"];
+  ? ["--yes", "@moonshot-ai/kimi-code", "web", "--no-open", "--port", String(KIMI_PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"]
+  : ["web", "--no-open", "--port", String(KIMI_PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"];
 
 console.error("Starting Kimi: " + kimiBin + " " + args.join(" "));
 
