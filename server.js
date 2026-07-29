@@ -1,17 +1,15 @@
 #!/usr/bin/env node
 /**
- * Kimi Code Render Server — v5 (http-proxy for WebSocket support)
- * Spawns kimi daemon on internal port, uses http-proxy for reliable
- * HTTP + WebSocket proxying. Health endpoint separate.
+ * Kimi Code Render Server — Direct mode (no proxy)
+ * Runs `kimi web` directly on Render's PORT for proper WebSocket support.
+ * No proxy layer — eliminates all proxy-related WebSocket issues.
  */
 const { spawn } = require("child_process");
-const http = require("http");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
 
 const PORT = parseInt(process.env.PORT) || 10000;
-const KIMI_PORT = 58630;
 
 // Ensure KIMI_CODE_HOME exists
 const KIMI_HOME = process.env.KIMI_CODE_HOME || path.join(os.homedir(), ".kimi-code");
@@ -30,7 +28,6 @@ if (!fs.existsSync(configPath)) {
   }
 }
 
-// Allow all known hosts for WebSocket
 process.env.KIMI_CODE_ALLOWED_HOSTS = ".onrender.com,localhost,127.0.0.1";
 process.env.KIMI_CODE_CORS_ORIGINS = "*";
 
@@ -41,133 +38,25 @@ const kimiPaths = [
 ];
 const kimiBin = kimiPaths.find(p => { try { return fs.existsSync(p); } catch(e) { return false; } }) || "npx";
 
+// Run kimi web directly on Render's PORT — no proxy, WebSocket works natively
 const args = kimiBin === "npx"
-  ? ["--yes", "@moonshot-ai/kimi-code", "web", "--no-open", "--port", String(KIMI_PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"]
-  : ["web", "--no-open", "--port", String(KIMI_PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"];
+  ? ["--yes", "@moonshot-ai/kimi-code", "web", "--no-open", "--port", String(PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"]
+  : ["web", "--no-open", "--port", String(PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"];
 
-console.error("Starting Kimi: " + kimiBin + " " + args.join(" "));
+console.error("Starting Kimi on port " + PORT + ": " + kimiBin + " " + args.join(" "));
 
 const kimiProc = spawn(kimiBin, args, {
-  stdio: ["ignore", "pipe", "pipe"],
-  env: { ...process.env },
+  stdio: ["ignore", "inherit", "inherit"],
+  env: { ...process.env, PORT: String(PORT) },
   shell: kimiBin === "npx",
 });
 
-kimiProc.stdout.on("data", d => process.stdout.write("[kimi] " + d));
-kimiProc.stderr.on("data", d => process.stderr.write("[kimi] " + d));
 kimiProc.on("exit", (code, sig) => {
-  console.error("Kimi exited (code=" + code + ", signal=" + sig + ") — restarting in 3s");
-  setTimeout(() => process.exit(1), 3000);
-});
-
-// Load http-proxy
-let httpProxy;
-try {
-  httpProxy = require("http-proxy");
-} catch (e) {
-  console.error("http-proxy not available, falling back to raw proxy. Install with: npm install http-proxy");
-}
-
-let proxy;
-if (httpProxy) {
-  proxy = httpProxy.createProxyServer({
-    target: { host: "127.0.0.1", port: KIMI_PORT },
-    ws: true,
-    changeOrigin: true,
-    proxyTimeout: 30000,
-    timeout: 30000,
-  });
-
-  proxy.on("error", (err, req, res) => {
-    console.error("Proxy error:", err.message);
-    if (res && typeof res.writeHead === "function") {
-      if (req.url && req.url.startsWith("/api/")) {
-        res.writeHead(503, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ code: 50001, msg: "Kimi daemon is starting up", data: null }));
-      } else {
-        res.writeHead(200, { "Content-Type": "text/html" });
-        res.end(getLoadingHtml());
-      }
-    }
-  });
-}
-
-function getLoadingHtml() {
-  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Kimi Code</title><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:#0f0f0f;color:#e0e0e0}div{text-align:center}.loading{width:20px;height:20px;border:3px solid #333;border-radius:50%;border-top-color:#6c5ce7;animation:spin 1s linear infinite;margin:10px auto}@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div><div class="loading"></div><h2>Kimi Code</h2><p>Starting...</p><script>setTimeout(()=>location.reload(),5000)</script></div></body></html>';
-}
-
-// HTTP server with proxy
-const server = http.createServer((req, res) => {
-  if (req.url === "/health" || req.url === "/_health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "healthy", uptime: process.uptime(), kimi_alive: true, proxy: !!proxy }));
-    return;
-  }
-  if (proxy) {
-    proxy.web(req, res, { target: { host: "127.0.0.1", port: KIMI_PORT } });
-  } else {
-    // Fallback: manual HTTP proxy
-    const opts = {
-      hostname: "127.0.0.1",
-      port: KIMI_PORT,
-      path: req.url,
-      method: req.method,
-      headers: { ...req.headers, connection: "close" },
-    };
-    const pr = http.request(opts, prRes => {
-      const headers = { ...prRes.headers };
-      delete headers["transfer-encoding"];
-      res.writeHead(prRes.statusCode, headers);
-      prRes.pipe(res);
-    });
-    pr.on("error", err => {
-      console.error("Proxy error:", err.message);
-      if (req.url && req.url.startsWith("/api/")) {
-        res.writeHead(503, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ code: 50001, msg: "Kimi daemon is starting up", data: null }));
-      } else {
-        res.writeHead(200, { "Content-Type": "text/html" });
-        res.end(getLoadingHtml());
-      }
-    });
-    req.pipe(pr);
-  }
-});
-
-// WebSocket upgrade handling
-server.on("upgrade", (req, socket, head) => {
-  if (proxy) {
-    // Use http-proxy for WebSocket (reliable)
-    proxy.ws(req, socket, head, { target: { host: "127.0.0.1", port: KIMI_PORT } });
-  } else {
-    // Fallback: use http.request with upgrade event
-    const opts = {
-      hostname: "127.0.0.1",
-      port: KIMI_PORT,
-      path: req.url,
-      method: "GET",
-      headers: req.headers,
-    };
-    const pr = http.request(opts);
-    pr.on("upgrade", (proxyRes, proxySocket, proxyHead) => {
-      socket.write(proxyHead || Buffer.alloc(0));
-      proxySocket.pipe(socket);
-      socket.pipe(proxySocket);
-    });
-    pr.on("error", () => {
-      socket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
-      socket.end();
-    });
-    pr.end();
-  }
-});
-
-server.listen(PORT, "0.0.0.0", () => {
-  console.error("Server on :" + PORT + ", Kimi on :" + KIMI_PORT + ", proxy=" + !!proxy);
+  console.error("Kimi exited (code=" + code + ", signal=" + sig + ")");
+  process.exit(code || 0);
 });
 
 process.on("SIGTERM", () => {
-  console.error("SIGTERM, shutting down...");
-  kimiProc.kill();
-  server.close(() => process.exit(0));
+  console.error("SIGTERM received, forwarding to kimi...");
+  kimiProc.kill("SIGTERM");
 });
