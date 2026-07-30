@@ -64,6 +64,13 @@ try {
       }
     }
   }
+  // Remove the managed:kimi-code OAuth provider — it requires a login token
+  // that doesn't exist in a headless deploy, and causes a "No token for kimi-code"
+  // error in the web client's refreshAllProviders.
+  configContent = configContent.replace(
+    /\[providers\."managed:kimi-code"\][^\[]*/,
+    ""
+  );
   fs.writeFileSync(configPath, configContent);
   console.error("[setup] Config written to " + configPath);
 } catch (e) {
