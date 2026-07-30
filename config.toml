@@ -1,0 +1,2715 @@
+default_model = "bluesminds-gpt52-chat"
+
+[env]
+UV_USE_IO_URING = "0"
+LIBUV_NO_IO_URING = "1"
+server_password = "__ENV_SERVER_PASSWORD__"
+
+[providers.opencode-zen]
+type = "openai"
+api_key = "__ENV_OPENCODE_ZEN_API_KEY__"
+base_url = "https://opencode.ai/zen/v1"
+
+[providers.bluesminds]
+type = "openai"
+api_key = "__ENV_BLUESMINDS_API_KEY__"
+base_url = "https://api.bluesminds.com/v1"
+stream = true
+max_retries = 1
+
+[providers.bluesminds-backup]
+type = "openai"
+api_key = "__ENV_BLUESMINDS_API_KEY__"
+base_url = "https://api.bluesminds.com/v1"
+
+[providers.omniroute]
+type = "openai"
+api_key = "no-auth-required"
+base_url = "http://127.0.0.1:20128/v1"
+
+[providers.z-ai]
+type = "openai"
+api_key = "__ENV_Z_AI_API_KEY__"
+base_url = "https://open.bigmodel.cn/api/paas/v4/"
+
+[providers.zenmux]
+type = "openai"
+api_key = "__ENV_ZENMUX_API_KEY__"
+base_url = "https://zenmux.ai/api/v1"
+
+[providers.cloudflare]
+type = "openai"
+api_key = "__ENV_CLOUDFLARE_API_KEY__"
+base_url = "https://api.cloudflare.com/client/v4/accounts/5f649ab31f3eea8092b74d83a9706895/ai/v2"
+
+[providers.nvidia]
+type = "openai"
+api_key = "__ENV_NVIDIA_API_KEY__"
+base_url = "https://integrate.api.nvidia.com/v1"
+
+[providers.nvidia-moonshotai]
+type = "openai"
+api_key = "__ENV_NVIDIA_API_KEY__"
+base_url = "https://integrate.api.nvidia.com/v1"
+
+[models.omniroute-auto-best-coding]
+provider = "omniroute"
+model = "auto/best-coding"
+max_context_size = 1048576
+
+[models.omniroute-auto-best-reasoning]
+provider = "omniroute"
+model = "auto/best-reasoning"
+max_context_size = 1048576
+
+[models.omniroute-auto-best-fast]
+provider = "omniroute"
+model = "auto/best-fast"
+max_context_size = 1048576
+
+[models.omniroute-auto-best-vision]
+provider = "omniroute"
+model = "auto/best-vision"
+max_context_size = 1048576
+
+[models.omniroute-auto-best-chat]
+provider = "omniroute"
+model = "auto/best-chat"
+max_context_size = 1048576
+
+[models.omniroute-auto-best-coding-fast]
+provider = "omniroute"
+model = "auto/best-coding-fast"
+max_context_size = 1048576
+
+[models.omniroute-auto-pro-coding]
+provider = "omniroute"
+model = "auto/pro-coding"
+max_context_size = 1048576
+
+[models.omniroute-auto-pro-reasoning]
+provider = "omniroute"
+model = "auto/pro-reasoning"
+max_context_size = 1048576
+
+[models.omniroute-auto-pro-vision]
+provider = "omniroute"
+model = "auto/pro-vision"
+max_context_size = 1048576
+
+[models.omniroute-auto-pro-chat]
+provider = "omniroute"
+model = "auto/pro-chat"
+max_context_size = 1048576
+
+[models.omniroute-auto-pro-fast]
+provider = "omniroute"
+model = "auto/pro-fast"
+max_context_size = 1048576
+
+[models.omniroute-auto-coding]
+provider = "omniroute"
+model = "auto/coding"
+max_context_size = 1048576
+
+[models.omniroute-auto-fast]
+provider = "omniroute"
+model = "auto/fast"
+max_context_size = 1048576
+
+[models.omniroute-auto-chat]
+provider = "omniroute"
+model = "auto/chat"
+max_context_size = 1048576
+
+[models.omniroute-auto-cheap]
+provider = "omniroute"
+model = "auto/cheap"
+max_context_size = 1048576
+
+[models.omniroute-auto-offline]
+provider = "omniroute"
+model = "auto/offline"
+max_context_size = 1048576
+
+[models.omniroute-auto-smart]
+provider = "omniroute"
+model = "auto/smart"
+max_context_size = 1048576
+
+[models.omniroute-auto-claude-opus]
+provider = "omniroute"
+model = "auto/claude-opus"
+max_context_size = 1048576
+
+[models.omniroute-auto-claude-sonnet]
+provider = "omniroute"
+model = "auto/claude-sonnet"
+max_context_size = 1048576
+
+[models.omniroute-auto-best-free]
+provider = "omniroute"
+model = "auto/best-free"
+max_context_size = 1048576
+
+[models.omniroute-auto-coding-fast]
+provider = "omniroute"
+model = "auto/coding:fast"
+max_context_size = 1048576
+
+[models.omniroute-auto-coding-cheap]
+provider = "omniroute"
+model = "auto/coding:cheap"
+max_context_size = 1048576
+
+[models.omniroute-auto-coding-free]
+provider = "omniroute"
+model = "auto/coding:free"
+max_context_size = 1048576
+
+[models.omniroute-auto-coding-pro]
+provider = "omniroute"
+model = "auto/coding:pro"
+max_context_size = 128000
+
+[models.omniroute-auto-coding-reliable]
+provider = "omniroute"
+model = "auto/coding:reliable"
+max_context_size = 1048576
+
+[models.omniroute-auto-reasoning]
+provider = "omniroute"
+model = "auto/reasoning"
+max_context_size = 1048576
+
+[models.omniroute-auto-reasoning-pro]
+provider = "omniroute"
+model = "auto/reasoning:pro"
+max_context_size = 128000
+
+[models.omniroute-auto-vision]
+provider = "omniroute"
+model = "auto/vision"
+max_context_size = 1048576
+
+[models.omniroute-auto-multimodal]
+provider = "omniroute"
+model = "auto/multimodal"
+max_context_size = 1048576
+
+[models.omniroute-ddgw-gpt-4o-mini]
+provider = "omniroute"
+model = "ddgw/gpt-4o-mini"
+max_context_size = 128000
+
+[models.omniroute-ddgw-gpt-5-mini]
+provider = "omniroute"
+model = "ddgw/gpt-5-mini"
+max_context_size = 400000
+
+[models.omniroute-ddgw-claude-3-5-haiku]
+provider = "omniroute"
+model = "ddgw/claude-3-5-haiku-20241022"
+max_context_size = 200000
+
+[models.omniroute-ddgw-llama-4-scout]
+provider = "omniroute"
+model = "ddgw/llama-4-scout"
+max_context_size = 128000
+
+[models.omniroute-ddgw-mistral-small]
+provider = "omniroute"
+model = "ddgw/mistral-small-2501"
+max_context_size = 128000
+
+[models.omniroute-ddgw-o3-mini]
+provider = "omniroute"
+model = "ddgw/o3-mini"
+max_context_size = 400000
+
+[models.omniroute-oc-big-pickle]
+provider = "omniroute"
+model = "oc/big-pickle"
+max_context_size = 200000
+
+[models.omniroute-oc-deepseek-v4-free]
+provider = "omniroute"
+model = "oc/deepseek-v4-flash-free"
+max_context_size = 1000000
+
+[models.omniroute-oc-minimax-m3-free]
+provider = "omniroute"
+model = "oc/minimax-m3-free"
+max_context_size = 1048576
+
+[models."omniroute-oc-minimax-m2.5-free"]
+provider = "omniroute"
+model = "oc/minimax-m2.5-free"
+max_context_size = 204800
+
+[models."omniroute-oc-ling-2.6-free"]
+provider = "omniroute"
+model = "oc/ling-2.6-1t-free"
+max_context_size = 200000
+
+[models.omniroute-oc-trinity-free]
+provider = "omniroute"
+model = "oc/trinity-large-preview-free"
+max_context_size = 200000
+
+[models.omniroute-oc-nemotron-free]
+provider = "omniroute"
+model = "oc/nemotron-3-super-free"
+max_context_size = 1000000
+
+[models.omniroute-oc-qwen36-free]
+provider = "omniroute"
+model = "oc/qwen3.6-plus-free"
+max_context_size = 200000
+
+[models.omniroute-tllm-gpt54]
+provider = "omniroute"
+model = "tllm/GPT_5_4"
+max_context_size = 400000
+
+[models.omniroute-tllm-gpt4o]
+provider = "omniroute"
+model = "tllm/GPT_4o"
+max_context_size = 200000
+
+[models.omniroute-tllm-claude-opus4]
+provider = "omniroute"
+model = "tllm/claude_opus_4"
+max_context_size = 200000
+
+[models.omniroute-tllm-claude-sonnet4]
+provider = "omniroute"
+model = "tllm/claude_sonnet_4"
+max_context_size = 200000
+
+[models.omniroute-tllm-claude-haiku35]
+provider = "omniroute"
+model = "tllm/claude_haiku_3_5"
+max_context_size = 200000
+
+[models.omniroute-tllm-deepseek-v4]
+provider = "omniroute"
+model = "tllm/deepseek_v4"
+max_context_size = 200000
+
+[models.omniroute-tllm-gemini3-flash]
+provider = "omniroute"
+model = "tllm/gemini_3_flash"
+max_context_size = 1000000
+
+[models.omniroute-tllm-gemini3-pro]
+provider = "omniroute"
+model = "tllm/gemini_3_pro"
+max_context_size = 1000000
+
+[models.opencode-zen-deepseek-v4]
+provider = "opencode-zen"
+model = "deepseek-v4-flash-free"
+max_context_size = 128000
+
+[models.deepseek-v4-flash-free]
+provider = "opencode-zen"
+model = "deepseek-v4-flash-free"
+max_context_size = 128000
+
+[models.deepseek-v4-flash-free-omniroute]
+provider = "omniroute"
+model = "oc/deepseek-v4-flash-free"
+max_context_size = 1000000
+
+[models.opencode-zen-deepseek-v4-pro]
+provider = "opencode-zen"
+model = "deepseek-v4-pro"
+max_context_size = 128000
+
+[models.opencode-zen-nemotron]
+provider = "opencode-zen"
+model = "nemotron-3-ultra-free"
+max_context_size = 128000
+
+[models.opencode-zen-north-mini]
+provider = "opencode-zen"
+model = "north-mini-code-free"
+max_context_size = 128000
+
+[models.opencode-zen-big-pickle]
+provider = "opencode-zen"
+model = "big-pickle"
+max_context_size = 128000
+
+[models.opencode-zen-qwen36]
+provider = "opencode-zen"
+model = "qwen3.6-plus-free"
+max_context_size = 128000
+
+[models.opencode-zen-gpt55]
+provider = "opencode-zen"
+model = "gpt-5.5"
+max_context_size = 128000
+
+[models.opencode-zen-gpt54-mini]
+provider = "opencode-zen"
+model = "gpt-5.4-mini"
+max_context_size = 128000
+
+[models.opencode-zen-gpt54]
+provider = "opencode-zen"
+model = "gpt-5.4"
+max_context_size = 128000
+
+[models.opencode-zen-claude-sonnet-4]
+provider = "opencode-zen"
+model = "claude-sonnet-4"
+max_context_size = 128000
+
+[models.opencode-zen-claude-haiku-4-5]
+provider = "opencode-zen"
+model = "claude-haiku-4-5"
+max_context_size = 128000
+
+[models.opencode-zen-kimi-k26]
+provider = "opencode-zen"
+model = "kimi-k2.6"
+max_context_size = 128000
+
+[models.opencode-zen-gemini-35-flash]
+provider = "opencode-zen"
+model = "gemini-3.5-flash"
+max_context_size = 128000
+
+[models.opencode-zen-minimax-m3]
+provider = "opencode-zen"
+model = "minimax-m3-free"
+max_context_size = 128000
+
+[models.opencode-zen-mimo-v25]
+provider = "opencode-zen"
+model = "mimo-v2.5-free"
+max_context_size = 128000
+
+[models.opencode-zen-qwen35]
+provider = "opencode-zen"
+model = "qwen3.5-plus"
+max_context_size = 128000
+
+[models.opencode-zen-gpt54-nano]
+provider = "opencode-zen"
+model = "gpt-5.4-nano"
+max_context_size = 128000
+
+[models.opencode-zen-grok]
+provider = "opencode-zen"
+model = "grok-build-0.1"
+max_context_size = 128000
+
+[models.opencode-zen-glm5]
+provider = "opencode-zen"
+model = "glm-5.2"
+max_context_size = 128000
+
+[models.bluesminds-gpt4o]
+provider = "bluesminds"
+model = "gpt-4o"
+max_context_size = 128000
+
+[models.bluesminds-gpt52-chat]
+provider = "bluesminds"
+model = "gpt-5.2-chat"
+max_context_size = 128000
+
+[models.bluesminds-gpt54]
+provider = "bluesminds"
+model = "gpt-5.4"
+max_context_size = 128000
+
+[models.bluesminds-gpt5-mini]
+provider = "bluesminds"
+model = "gpt-5-mini"
+max_context_size = 128000
+
+[models.bluesminds-grok45]
+provider = "bluesminds"
+model = "grok-4.5"
+max_context_size = 128000
+
+[models.bluesminds-qwen25]
+provider = "bluesminds"
+model = "qwen2.5"
+max_context_size = 128000
+
+[models.bluesminds-hy3]
+provider = "bluesminds"
+model = "hy3"
+max_context_size = 128000
+
+[models.bluesminds-mimo-v25]
+provider = "bluesminds"
+model = "mimo-v2.5"
+max_context_size = 128000
+
+[models.bluesminds-deepseek-v4-flash]
+provider = "bluesminds"
+model = "deepseek-v4-flash"
+max_context_size = 128000
+
+[models.bluesminds-stepfun-step35flash]
+provider = "bluesminds"
+model = "stepfun-ai/step-3.5-flash"
+max_context_size = 128000
+
+[models.bluesminds-bytedance-seed]
+provider = "bluesminds"
+model = "bytedance/seed-oss-36b-instruct"
+max_context_size = 65536
+
+[models.bluesminds-stockmark-100b]
+provider = "bluesminds"
+model = "stockmark/stockmark-2-100b-instruct"
+max_context_size = 128000
+
+[models.bluesminds-mistral-large3-675b]
+provider = "bluesminds"
+model = "mistralai/mistral-large-3-675b-instruct-2512"
+max_context_size = 128000
+
+[models.bluesminds-mistral-nemotron]
+provider = "bluesminds"
+model = "mistralai/mistral-nemotron"
+max_context_size = 128000
+
+[models.bluesminds-mixtral-8x7b]
+provider = "bluesminds"
+model = "mistralai/mixtral-8x7b-instruct-v0.1"
+max_context_size = 65536
+
+[models.bluesminds-mistral-small4]
+provider = "bluesminds"
+model = "mistralai/mistral-small-4-119b-2603"
+max_context_size = 128000
+
+[models.bluesminds-ministral-14b]
+provider = "bluesminds"
+model = "mistralai/ministral-14b-instruct-2512"
+max_context_size = 65536
+
+[models.bluesminds-upstage-solar]
+provider = "bluesminds"
+model = "upstage/solar-10.7b-instruct"
+max_context_size = 65536
+
+[models.bluesminds-phi4-mini]
+provider = "bluesminds"
+model = "microsoft/phi-4-mini-instruct"
+max_context_size = 65536
+
+[models.bluesminds-nemotron3-super-120b]
+provider = "bluesminds"
+model = "nvidia/nemotron-3-super-120b-a12b"
+max_context_size = 128000
+
+[models.bluesminds-nemotron-nano-12b-v2vl]
+provider = "bluesminds"
+model = "nvidia/nemotron-nano-12b-v2-vl"
+max_context_size = 128000
+
+[models.bluesminds-nemotron-mini-4b]
+provider = "bluesminds"
+model = "nvidia/nemotron-mini-4b-instruct"
+max_context_size = 65536
+
+[models.bluesminds-nemotron-nano-9bv2]
+provider = "bluesminds"
+model = "nvidia/nvidia-nemotron-nano-9b-v2"
+max_context_size = 65536
+
+[models.bluesminds-nemotron3-nano-30b]
+provider = "bluesminds"
+model = "nvidia/nemotron-3-nano-30b-a3b"
+max_context_size = 65536
+
+[models.bluesminds-nemotron3-nano-omni-30b]
+provider = "bluesminds"
+model = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+max_context_size = 65536
+
+[models.bluesminds-nemotron3-super49b-v1]
+provider = "bluesminds"
+model = "nvidia/llama-3.3-nemotron-super-49b-v1"
+max_context_size = 128000
+
+[models.bluesminds-nemotron3-super49b-v15]
+provider = "bluesminds"
+model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+max_context_size = 128000
+
+[models.bluesminds-llama31-8b]
+provider = "bluesminds"
+model = "meta/llama-3.1-8b-instruct"
+max_context_size = 128000
+
+[models.bluesminds-llama33-70b]
+provider = "bluesminds"
+model = "meta/llama-3.3-70b-instruct"
+max_context_size = 128000
+
+[models.bluesminds-llama4-maverick]
+provider = "bluesminds"
+model = "meta/llama-4-maverick-17b-128e-instruct"
+max_context_size = 65536
+
+[models.bluesminds-llama32-11b-vision]
+provider = "bluesminds"
+model = "meta/llama-3.2-11b-vision-instruct"
+max_context_size = 128000
+
+[models.glm-4-flash]
+provider = "z-ai"
+model = "glm-4-flash"
+max_context_size = 128000
+
+[models.glm-4-flashx]
+provider = "z-ai"
+model = "glm-4-flashx"
+max_context_size = 128000
+[models."nvidia-meta_llama-3_1-405b-instruct"]
+provider = "nvidia"
+model = "meta/llama-3.1-405b-instruct"
+max_context_size = 128000
+
+[models."nvidia-meta_llama-3_1-70b-instruct"]
+provider = "nvidia"
+model = "meta/llama-3.1-70b-instruct"
+max_context_size = 128000
+
+[models."nvidia-meta_llama-3_1-8b-instruct"]
+provider = "nvidia"
+model = "meta/llama-3.1-8b-instruct"
+max_context_size = 128000
+
+[models."nvidia-nvidia_nemotron-3-ultra"]
+provider = "nvidia"
+model = "nvidia/nemotron-3-ultra"
+max_context_size = 128000
+
+[models."nvidia-nvidia_nemotron-4-340b-instruct"]
+provider = "nvidia"
+model = "nvidia/nemotron-4-340b-instruct"
+max_context_size = 128000
+
+[models."nvidia-google_gemma-2-27b-it"]
+provider = "nvidia"
+model = "google/gemma-2-27b-it"
+max_context_size = 128000
+
+[models."nvidia-google_gemma-2-9b-it"]
+provider = "nvidia"
+model = "google/gemma-2-9b-it"
+max_context_size = 8192
+
+[models."nvidia-mistralai_mistral-large"]
+provider = "nvidia"
+model = "mistralai/mistral-large"
+max_context_size = 32768
+
+[models."nvidia-mistralai_mixtral-8x7b-instruct-v0_1"]
+provider = "nvidia"
+model = "mistralai/mixtral-8x7b-instruct-v0.1"
+max_context_size = 32768
+
+[models."nvidia-mistralai_mixtral-8x22b-instruct-v0_1"]
+provider = "nvidia"
+model = "mistralai/mixtral-8x22b-instruct-v0.1"
+max_context_size = 32768
+
+[models."nvidia-qwen_qwen2_5-72b-instruct"]
+provider = "nvidia"
+model = "qwen/qwen2.5-72b-instruct"
+max_context_size = 131072
+
+[models."nvidia-qwen_qwen2_5-32b-instruct"]
+provider = "nvidia"
+model = "qwen/qwen2.5-32b-instruct"
+max_context_size = 131072
+
+[models."nvidia-qwen_qwen2_5-14b-instruct"]
+provider = "nvidia"
+model = "qwen/qwen2.5-14b-instruct"
+max_context_size = 131072
+
+[models."nvidia-qwen_qwen2_5-7b-instruct"]
+provider = "nvidia"
+model = "qwen/qwen2.5-7b-instruct"
+max_context_size = 131072
+
+[models."nvidia-moonshotai-01-ai_yi-large"]
+provider = "nvidia-moonshotai"
+model = "01-ai/yi-large"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-abacusai_dracarys-llama-3_1-70b-instruct"]
+provider = "nvidia-moonshotai"
+model = "abacusai/dracarys-llama-3.1-70b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-adept_fuyu-8b"]
+provider = "nvidia-moonshotai"
+model = "adept/fuyu-8b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-ai21labs_jamba-1_5-large-instruct"]
+provider = "nvidia-moonshotai"
+model = "ai21labs/jamba-1.5-large-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-aisingapore_sea-lion-7b-instruct"]
+provider = "nvidia-moonshotai"
+model = "aisingapore/sea-lion-7b-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-baai_bge-m3"]
+provider = "nvidia-moonshotai"
+model = "baai/bge-m3"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-bigcode_starcoder2-15b"]
+provider = "nvidia-moonshotai"
+model = "bigcode/starcoder2-15b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-bytedance_seed-oss-36b-instruct"]
+provider = "nvidia-moonshotai"
+model = "bytedance/seed-oss-36b-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-databricks_dbrx-instruct"]
+provider = "nvidia-moonshotai"
+model = "databricks/dbrx-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-deepseek-ai_deepseek-coder-6_7b-instruct"]
+provider = "nvidia-moonshotai"
+model = "deepseek-ai/deepseek-coder-6.7b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-deepseek-ai_deepseek-v4-flash"]
+provider = "nvidia-moonshotai"
+model = "deepseek-ai/deepseek-v4-flash"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-deepseek-ai_deepseek-v4-pro"]
+provider = "nvidia-moonshotai"
+model = "deepseek-ai/deepseek-v4-pro"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-google_codegemma-1_1-7b"]
+provider = "nvidia-moonshotai"
+model = "google/codegemma-1.1-7b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-google_codegemma-7b"]
+provider = "nvidia-moonshotai"
+model = "google/codegemma-7b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-google_deplot"]
+provider = "nvidia-moonshotai"
+model = "google/deplot"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-google_diffusiongemma-26b-a4b-it"]
+provider = "nvidia-moonshotai"
+model = "google/diffusiongemma-26b-a4b-it"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-google_gemma-2-2b-it"]
+provider = "nvidia-moonshotai"
+model = "google/gemma-2-2b-it"
+max_context_size = 8192
+
+[models."nvidia-moonshotai-google_gemma-2b"]
+provider = "nvidia-moonshotai"
+model = "google/gemma-2b"
+max_context_size = 8192
+
+[models."nvidia-moonshotai-google_gemma-3-12b-it"]
+provider = "nvidia-moonshotai"
+model = "google/gemma-3-12b-it"
+max_context_size = 8192
+
+[models."nvidia-moonshotai-google_gemma-3-4b-it"]
+provider = "nvidia-moonshotai"
+model = "google/gemma-3-4b-it"
+max_context_size = 8192
+
+[models."nvidia-moonshotai-google_gemma-3n-e2b-it"]
+provider = "nvidia-moonshotai"
+model = "google/gemma-3n-e2b-it"
+max_context_size = 8192
+
+[models."nvidia-moonshotai-google_gemma-3n-e4b-it"]
+provider = "nvidia-moonshotai"
+model = "google/gemma-3n-e4b-it"
+max_context_size = 8192
+
+[models."nvidia-moonshotai-google_gemma-4-31b-it"]
+provider = "nvidia-moonshotai"
+model = "google/gemma-4-31b-it"
+max_context_size = 8192
+
+[models."nvidia-moonshotai-google_recurrentgemma-2b"]
+provider = "nvidia-moonshotai"
+model = "google/recurrentgemma-2b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-ibm_granite-3_0-3b-a800m-instruct"]
+provider = "nvidia-moonshotai"
+model = "ibm/granite-3.0-3b-a800m-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-ibm_granite-3_0-8b-instruct"]
+provider = "nvidia-moonshotai"
+model = "ibm/granite-3.0-8b-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-ibm_granite-34b-code-instruct"]
+provider = "nvidia-moonshotai"
+model = "ibm/granite-34b-code-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-ibm_granite-8b-code-instruct"]
+provider = "nvidia-moonshotai"
+model = "ibm/granite-8b-code-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-meta_codellama-70b"]
+provider = "nvidia-moonshotai"
+model = "meta/codellama-70b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-meta_llama-3_1-70b-instruct"]
+provider = "nvidia-moonshotai"
+model = "meta/llama-3.1-70b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-meta_llama-3_1-8b-instruct"]
+provider = "nvidia-moonshotai"
+model = "meta/llama-3.1-8b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-meta_llama-3_2-11b-vision-instruct"]
+provider = "nvidia-moonshotai"
+model = "meta/llama-3.2-11b-vision-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-meta_llama-3_2-1b-instruct"]
+provider = "nvidia-moonshotai"
+model = "meta/llama-3.2-1b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-meta_llama-3_2-3b-instruct"]
+provider = "nvidia-moonshotai"
+model = "meta/llama-3.2-3b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-meta_llama-3_2-90b-vision-instruct"]
+provider = "nvidia-moonshotai"
+model = "meta/llama-3.2-90b-vision-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-meta_llama-3_3-70b-instruct"]
+provider = "nvidia-moonshotai"
+model = "meta/llama-3.3-70b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-meta_llama-4-maverick-17b-128e-instruct"]
+provider = "nvidia-moonshotai"
+model = "meta/llama-4-maverick-17b-128e-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-meta_llama-guard-4-12b"]
+provider = "nvidia-moonshotai"
+model = "meta/llama-guard-4-12b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-meta_llama2-70b"]
+provider = "nvidia-moonshotai"
+model = "meta/llama2-70b"
+max_context_size = 4096
+
+[models."nvidia-moonshotai-microsoft_kosmos-2"]
+provider = "nvidia-moonshotai"
+model = "microsoft/kosmos-2"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-microsoft_phi-3-vision-128k-instruct"]
+provider = "nvidia-moonshotai"
+model = "microsoft/phi-3-vision-128k-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-microsoft_phi-3_5-moe-instruct"]
+provider = "nvidia-moonshotai"
+model = "microsoft/phi-3.5-moe-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-microsoft_phi-4-mini-instruct"]
+provider = "nvidia-moonshotai"
+model = "microsoft/phi-4-mini-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-microsoft_phi-4-multimodal-instruct"]
+provider = "nvidia-moonshotai"
+model = "microsoft/phi-4-multimodal-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-minimaxai_minimax-m2_7"]
+provider = "nvidia-moonshotai"
+model = "minimaxai/minimax-m2.7"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-minimaxai_minimax-m3"]
+provider = "nvidia-moonshotai"
+model = "minimaxai/minimax-m3"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-mistralai_codestral-22b-instruct-v0_1"]
+provider = "nvidia-moonshotai"
+model = "mistralai/codestral-22b-instruct-v0.1"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-mistralai_ministral-14b-instruct-2512"]
+provider = "nvidia-moonshotai"
+model = "mistralai/ministral-14b-instruct-2512"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-mistralai_mistral-7b-instruct-v0_3"]
+provider = "nvidia-moonshotai"
+model = "mistralai/mistral-7b-instruct-v0.3"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-mistralai_mistral-large"]
+provider = "nvidia-moonshotai"
+model = "mistralai/mistral-large"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-mistralai_mistral-large-2-instruct"]
+provider = "nvidia-moonshotai"
+model = "mistralai/mistral-large-2-instruct"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-mistralai_mistral-large-3-675b-instruct-2512"]
+provider = "nvidia-moonshotai"
+model = "mistralai/mistral-large-3-675b-instruct-2512"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-mistralai_mistral-medium-3_5-128b"]
+provider = "nvidia-moonshotai"
+model = "mistralai/mistral-medium-3.5-128b"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-mistralai_mistral-nemotron"]
+provider = "nvidia-moonshotai"
+model = "mistralai/mistral-nemotron"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-mistralai_mistral-small-4-119b-2603"]
+provider = "nvidia-moonshotai"
+model = "mistralai/mistral-small-4-119b-2603"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-mistralai_mixtral-8x22b-v0_1"]
+provider = "nvidia-moonshotai"
+model = "mistralai/mixtral-8x22b-v0.1"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-mistralai_mixtral-8x7b-instruct-v0_1"]
+provider = "nvidia-moonshotai"
+model = "mistralai/mixtral-8x7b-instruct-v0.1"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-moonshotai_kimi-k2_6"]
+provider = "nvidia-moonshotai"
+model = "moonshotai/kimi-k2.6"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nv-mistralai_mistral-nemo-12b-instruct"]
+provider = "nvidia-moonshotai"
+model = "nv-mistralai/mistral-nemo-12b-instruct"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-nvidia_ai-synthetic-video-detector"]
+provider = "nvidia-moonshotai"
+model = "nvidia/ai-synthetic-video-detector"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_cosmos-reason2-8b"]
+provider = "nvidia-moonshotai"
+model = "nvidia/cosmos-reason2-8b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_embed-qa-4"]
+provider = "nvidia-moonshotai"
+model = "nvidia/embed-qa-4"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_gliner-pii"]
+provider = "nvidia-moonshotai"
+model = "nvidia/gliner-pii"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_ising-calibration-1-35b-a3b"]
+provider = "nvidia-moonshotai"
+model = "nvidia/ising-calibration-1-35b-a3b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_llama-3_1-nemoguard-8b-content-safety"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.1-nemoguard-8b-content-safety"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_1-nemoguard-8b-topic-control"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.1-nemoguard-8b-topic-control"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_1-nemotron-51b-instruct"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.1-nemotron-51b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_1-nemotron-70b-instruct"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.1-nemotron-70b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_1-nemotron-nano-8b-v1"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.1-nemotron-nano-8b-v1"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_1-nemotron-nano-vl-8b-v1"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_1-nemotron-safety-guard-8b-v3"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.1-nemotron-safety-guard-8b-v3"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_1-nemotron-ultra-253b-v1"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.1-nemotron-ultra-253b-v1"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_2-nemoretriever-1b-vlm-embed-v1"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.2-nemoretriever-1b-vlm-embed-v1"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_2-nv-embedqa-1b-v1"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.2-nv-embedqa-1b-v1"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_3-nemotron-super-49b-v1"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.3-nemotron-super-49b-v1"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-3_3-nemotron-super-49b-v1_5"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-nemotron-embed-1b-v2"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-nemotron-embed-1b-v2"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama-nemotron-embed-vl-1b-v2"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama-nemotron-embed-vl-1b-v2"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_llama3-chatqa-1_5-70b"]
+provider = "nvidia-moonshotai"
+model = "nvidia/llama3-chatqa-1.5-70b"
+max_context_size = 8192
+
+[models."nvidia-moonshotai-nvidia_mistral-nemo-minitron-8b-8k-instruct"]
+provider = "nvidia-moonshotai"
+model = "nvidia/mistral-nemo-minitron-8b-8k-instruct"
+max_context_size = 8192
+
+[models."nvidia-moonshotai-nvidia_nemoretriever-parse"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemoretriever-parse"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_nemotron-3-content-safety"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-3-content-safety"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-3-nano-30b-a3b"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-3-nano-30b-a3b"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-3-nano-omni-30b-a3b-reasoning"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-3-super-120b-a12b"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-3-super-120b-a12b"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-3-ultra-550b-a55b"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-3-ultra-550b-a55b"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-3_5-content-safety"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-3.5-content-safety"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-4-340b-instruct"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-4-340b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-4-340b-reward"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-4-340b-reward"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-content-safety-reasoning-4b"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-content-safety-reasoning-4b"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-mini-4b-instruct"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-mini-4b-instruct"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-nano-12b-v2-vl"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-nano-12b-v2-vl"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-nano-3-30b-a3b"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-nano-3-30b-a3b"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_nemotron-parse"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nemotron-parse"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_neva-22b"]
+provider = "nvidia-moonshotai"
+model = "nvidia/neva-22b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_nv-embed-v1"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nv-embed-v1"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_nv-embedcode-7b-v1"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nv-embedcode-7b-v1"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_nv-embedqa-e5-v5"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nv-embedqa-e5-v5"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_nv-embedqa-mistral-7b-v2"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nv-embedqa-mistral-7b-v2"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-nvidia_nvclip"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nvclip"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_nvidia-nemotron-nano-9b-v2"]
+provider = "nvidia-moonshotai"
+model = "nvidia/nvidia-nemotron-nano-9b-v2"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-nvidia_riva-translate-4b-instruct"]
+provider = "nvidia-moonshotai"
+model = "nvidia/riva-translate-4b-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_riva-translate-4b-instruct-v1_1"]
+provider = "nvidia-moonshotai"
+model = "nvidia/riva-translate-4b-instruct-v1.1"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-nvidia_vila"]
+provider = "nvidia-moonshotai"
+model = "nvidia/vila"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-openai_gpt-oss-120b"]
+provider = "nvidia-moonshotai"
+model = "openai/gpt-oss-120b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-openai_gpt-oss-20b"]
+provider = "nvidia-moonshotai"
+model = "openai/gpt-oss-20b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-qwen_qwen3-next-80b-a3b-instruct"]
+provider = "nvidia-moonshotai"
+model = "qwen/qwen3-next-80b-a3b-instruct"
+max_context_size = 131072
+
+[models."nvidia-moonshotai-qwen_qwen3_5-122b-a10b"]
+provider = "nvidia-moonshotai"
+model = "qwen/qwen3.5-122b-a10b"
+max_context_size = 131072
+
+[models."nvidia-moonshotai-qwen_qwen3_5-397b-a17b"]
+provider = "nvidia-moonshotai"
+model = "qwen/qwen3.5-397b-a17b"
+max_context_size = 131072
+
+[models."nvidia-moonshotai-sarvamai_sarvam-m"]
+provider = "nvidia-moonshotai"
+model = "sarvamai/sarvam-m"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-snowflake_arctic-embed-l"]
+provider = "nvidia-moonshotai"
+model = "snowflake/arctic-embed-l"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-stepfun-ai_step-3_5-flash"]
+provider = "nvidia-moonshotai"
+model = "stepfun-ai/step-3.5-flash"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-stepfun-ai_step-3_7-flash"]
+provider = "nvidia-moonshotai"
+model = "stepfun-ai/step-3.7-flash"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-stockmark_stockmark-2-100b-instruct"]
+provider = "nvidia-moonshotai"
+model = "stockmark/stockmark-2-100b-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-upstage_solar-10_7b-instruct"]
+provider = "nvidia-moonshotai"
+model = "upstage/solar-10.7b-instruct"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-writer_palmyra-creative-122b"]
+provider = "nvidia-moonshotai"
+model = "writer/palmyra-creative-122b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-writer_palmyra-fin-70b-32k"]
+provider = "nvidia-moonshotai"
+model = "writer/palmyra-fin-70b-32k"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-writer_palmyra-med-70b"]
+provider = "nvidia-moonshotai"
+model = "writer/palmyra-med-70b"
+max_context_size = 65536
+
+[models."nvidia-moonshotai-writer_palmyra-med-70b-32k"]
+provider = "nvidia-moonshotai"
+model = "writer/palmyra-med-70b-32k"
+max_context_size = 32768
+
+[models."nvidia-moonshotai-z-ai_glm-5_2"]
+provider = "nvidia-moonshotai"
+model = "z-ai/glm-5.2"
+max_context_size = 128000
+
+[models."nvidia-moonshotai-zyphra_zamba2-7b-instruct"]
+provider = "nvidia-moonshotai"
+model = "zyphra/zamba2-7b-instruct"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_6-luna"]
+provider = "zenmux"
+model = "openai/gpt-5.6-luna"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_6-terra"]
+provider = "zenmux"
+model = "openai/gpt-5.6-terra"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_6-sol"]
+provider = "zenmux"
+model = "openai/gpt-5.6-sol"
+max_context_size = 65536
+
+[models."zenmux-x-ai_grok-4_5-free"]
+provider = "zenmux"
+model = "x-ai/grok-4.5-free"
+max_context_size = 65536
+
+[models."zenmux-x-ai_grok-4_5"]
+provider = "zenmux"
+model = "x-ai/grok-4.5"
+max_context_size = 65536
+
+[models."zenmux-kuaishou_kat-coder-air-v2_5"]
+provider = "zenmux"
+model = "kuaishou/kat-coder-air-v2.5"
+max_context_size = 65536
+
+[models."zenmux-kuaishou_kat-coder-pro-v2_5"]
+provider = "zenmux"
+model = "kuaishou/kat-coder-pro-v2.5"
+max_context_size = 65536
+
+[models."zenmux-tencent_hy3"]
+provider = "zenmux"
+model = "tencent/hy3"
+max_context_size = 65536
+
+[models."zenmux-meituan_longcat-2_0"]
+provider = "zenmux"
+model = "meituan/longcat-2.0"
+max_context_size = 65536
+
+[models."zenmux-anthropic_claude-sonnet-5"]
+provider = "zenmux"
+model = "anthropic/claude-sonnet-5"
+max_context_size = 200000
+
+[models."zenmux-bytedance_doubao-seed-2_1-turbo"]
+provider = "zenmux"
+model = "bytedance/doubao-seed-2.1-turbo"
+max_context_size = 65536
+
+[models."zenmux-bytedance_doubao-seed-2_1-pro"]
+provider = "zenmux"
+model = "bytedance/doubao-seed-2.1-pro"
+max_context_size = 65536
+
+[models."zenmux-bytedance_doubao-seed-evolving"]
+provider = "zenmux"
+model = "bytedance/doubao-seed-evolving"
+max_context_size = 65536
+
+[models."zenmux-bytedance_doubao-seed-character"]
+provider = "zenmux"
+model = "bytedance/doubao-seed-character"
+max_context_size = 65536
+
+[models."zenmux-z-ai_glm-5_2"]
+provider = "zenmux"
+model = "z-ai/glm-5.2"
+max_context_size = 128000
+
+[models."zenmux-moonshotai_kimi-k2_7-code-highspeed"]
+provider = "zenmux"
+model = "moonshotai/kimi-k2.7-code-highspeed"
+max_context_size = 65536
+
+[models."zenmux-moonshotai_kimi-k2_7-code"]
+provider = "zenmux"
+model = "moonshotai/kimi-k2.7-code"
+max_context_size = 65536
+
+[models."zenmux-moonshotai-kimi-k3-free"]
+provider = "zenmux"
+model = "moonshotai/kimi-k3-free"
+max_context_size = 128000
+
+[models."zenmux-moonshotai-kimi-k3"]
+provider = "zenmux"
+model = "moonshotai/kimi-k3"
+max_context_size = 128000
+
+[models."zenmux-anthropic_claude-fable-5"]
+provider = "zenmux"
+model = "anthropic/claude-fable-5"
+max_context_size = 200000
+
+[models."zenmux-qwen_qwen3_7-plus"]
+provider = "zenmux"
+model = "qwen/qwen3.7-plus"
+max_context_size = 131072
+
+[models."zenmux-minimax_minimax-m3"]
+provider = "zenmux"
+model = "minimax/minimax-m3"
+max_context_size = 65536
+
+[models."zenmux-stepfun_step-3_7-flash"]
+provider = "zenmux"
+model = "stepfun/step-3.7-flash"
+max_context_size = 65536
+
+[models."zenmux-stepfun_step-3_7-flash-free"]
+provider = "zenmux"
+model = "stepfun/step-3.7-flash-free"
+max_context_size = 65536
+
+[models."zenmux-anthropic_claude-opus-4_8"]
+provider = "zenmux"
+model = "anthropic/claude-opus-4.8"
+max_context_size = 200000
+
+[models."zenmux-x-ai_grok-build-0_1"]
+provider = "zenmux"
+model = "x-ai/grok-build-0.1"
+max_context_size = 65536
+
+[models."zenmux-qwen_qwen3_7-max"]
+provider = "zenmux"
+model = "qwen/qwen3.7-max"
+max_context_size = 131072
+
+[models."zenmux-sapiens-ai_agnes-2_0-flash"]
+provider = "zenmux"
+model = "sapiens-ai/agnes-2.0-flash"
+max_context_size = 65536
+
+[models."zenmux-google_gemini-embedding-2"]
+provider = "zenmux"
+model = "google/gemini-embedding-2"
+max_context_size = 1048576
+
+[models."zenmux-google_gemini-3_5-flash"]
+provider = "zenmux"
+model = "google/gemini-3.5-flash"
+max_context_size = 1048576
+
+[models."zenmux-inclusionai_ring-2_6-1t"]
+provider = "zenmux"
+model = "inclusionai/ring-2.6-1t"
+max_context_size = 65536
+
+[models."zenmux-google_gemini-3_1-flash-lite"]
+provider = "zenmux"
+model = "google/gemini-3.1-flash-lite"
+max_context_size = 1048576
+
+[models."zenmux-baidu_ernie-5_1"]
+provider = "zenmux"
+model = "baidu/ernie-5.1"
+max_context_size = 65536
+
+[models."zenmux-openai_chat-latest"]
+provider = "zenmux"
+model = "openai/chat-latest"
+max_context_size = 65536
+
+[models."zenmux-x-ai_grok-4_3"]
+provider = "zenmux"
+model = "x-ai/grok-4.3"
+max_context_size = 65536
+
+[models."zenmux-qwen_qwen3_6-max-preview"]
+provider = "zenmux"
+model = "qwen/qwen3.6-max-preview"
+max_context_size = 131072
+
+[models."zenmux-openai_gpt-5_5-pro"]
+provider = "zenmux"
+model = "openai/gpt-5.5-pro"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_5"]
+provider = "zenmux"
+model = "openai/gpt-5.5"
+max_context_size = 65536
+
+[models."zenmux-deepseek_deepseek-v4-flash"]
+provider = "zenmux"
+model = "deepseek/deepseek-v4-flash"
+max_context_size = 128000
+
+[models."zenmux-deepseek_deepseek-v4-pro"]
+provider = "zenmux"
+model = "deepseek/deepseek-v4-pro"
+max_context_size = 128000
+
+[models."zenmux-inclusionai_ling-2_6-1t"]
+provider = "zenmux"
+model = "inclusionai/ling-2.6-1t"
+max_context_size = 65536
+
+[models."zenmux-xiaomi_mimo-v2_5-pro"]
+provider = "zenmux"
+model = "xiaomi/mimo-v2.5-pro"
+max_context_size = 65536
+
+[models."zenmux-tencent_hy3-preview"]
+provider = "zenmux"
+model = "tencent/hy3-preview"
+max_context_size = 65536
+
+[models."zenmux-xiaomi_mimo-v2_5"]
+provider = "zenmux"
+model = "xiaomi/mimo-v2.5"
+max_context_size = 65536
+
+[models."zenmux-inclusionai_ling-2_6-flash"]
+provider = "zenmux"
+model = "inclusionai/ling-2.6-flash"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-image-2"]
+provider = "zenmux"
+model = "openai/gpt-image-2"
+max_context_size = 65536
+
+[models."zenmux-moonshotai_kimi-k2_6"]
+provider = "zenmux"
+model = "moonshotai/kimi-k2.6"
+max_context_size = 65536
+
+[models."zenmux-anthropic_claude-opus-4_7"]
+provider = "zenmux"
+model = "anthropic/claude-opus-4.7"
+max_context_size = 200000
+
+[models."zenmux-z-ai_glm-5_1"]
+provider = "zenmux"
+model = "z-ai/glm-5.1"
+max_context_size = 128000
+
+[models."zenmux-qwen_qwen3_6-plus"]
+provider = "zenmux"
+model = "qwen/qwen3.6-plus"
+max_context_size = 131072
+
+[models."zenmux-z-ai_glm-5v-turbo"]
+provider = "zenmux"
+model = "z-ai/glm-5v-turbo"
+max_context_size = 128000
+
+[models."zenmux-kuaishou_kat-coder-pro-v2"]
+provider = "zenmux"
+model = "kuaishou/kat-coder-pro-v2"
+max_context_size = 65536
+
+[models."zenmux-minimax_minimax-m2_7"]
+provider = "zenmux"
+model = "minimax/minimax-m2.7"
+max_context_size = 65536
+
+[models."zenmux-minimax_minimax-m2_7-highspeed"]
+provider = "zenmux"
+model = "minimax/minimax-m2.7-highspeed"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_4-nano"]
+provider = "zenmux"
+model = "openai/gpt-5.4-nano"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_4-mini"]
+provider = "zenmux"
+model = "openai/gpt-5.4-mini"
+max_context_size = 65536
+
+[models."zenmux-inclusionai_llada2_1-flash"]
+provider = "zenmux"
+model = "inclusionai/llada2.1-flash"
+max_context_size = 65536
+
+[models."zenmux-z-ai_glm-5-turbo"]
+provider = "zenmux"
+model = "z-ai/glm-5-turbo"
+max_context_size = 128000
+
+[models."zenmux-x-ai_grok-4_2-fast"]
+provider = "zenmux"
+model = "x-ai/grok-4.2-fast"
+max_context_size = 65536
+
+[models."zenmux-x-ai_grok-4_2-fast-non-reasoning"]
+provider = "zenmux"
+model = "x-ai/grok-4.2-fast-non-reasoning"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_4"]
+provider = "zenmux"
+model = "openai/gpt-5.4"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_4-pro"]
+provider = "zenmux"
+model = "openai/gpt-5.4-pro"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_3-chat"]
+provider = "zenmux"
+model = "openai/gpt-5.3-chat"
+max_context_size = 65536
+
+[models."zenmux-qwen_qwen3_5-flash"]
+provider = "zenmux"
+model = "qwen/qwen3.5-flash"
+max_context_size = 131072
+
+[models."zenmux-qwen_qwen3_6-flash"]
+provider = "zenmux"
+model = "qwen/qwen3.6-flash"
+max_context_size = 131072
+
+[models."zenmux-google_gemini-3_1-pro-preview"]
+provider = "zenmux"
+model = "google/gemini-3.1-pro-preview"
+max_context_size = 1048576
+
+[models."zenmux-anthropic_claude-sonnet-4_6"]
+provider = "zenmux"
+model = "anthropic/claude-sonnet-4.6"
+max_context_size = 200000
+
+[models."zenmux-qwen_qwen3_5-plus"]
+provider = "zenmux"
+model = "qwen/qwen3.5-plus"
+max_context_size = 131072
+
+[models."zenmux-bytedance_doubao-seed-2_0-mini"]
+provider = "zenmux"
+model = "bytedance/doubao-seed-2.0-mini"
+max_context_size = 65536
+
+[models."zenmux-bytedance_doubao-seed-2_0-lite"]
+provider = "zenmux"
+model = "bytedance/doubao-seed-2.0-lite"
+max_context_size = 65536
+
+[models."zenmux-bytedance_doubao-seed-2_0-code"]
+provider = "zenmux"
+model = "bytedance/doubao-seed-2.0-code"
+max_context_size = 65536
+
+[models."zenmux-bytedance_doubao-seed-2_0-pro"]
+provider = "zenmux"
+model = "bytedance/doubao-seed-2.0-pro"
+max_context_size = 65536
+
+[models."zenmux-minimax_minimax-m2_5"]
+provider = "zenmux"
+model = "minimax/minimax-m2.5"
+max_context_size = 65536
+
+[models."zenmux-minimax_minimax-m2_5-lightning"]
+provider = "zenmux"
+model = "minimax/minimax-m2.5-lightning"
+max_context_size = 65536
+
+[models."zenmux-z-ai_glm-5"]
+provider = "zenmux"
+model = "z-ai/glm-5"
+max_context_size = 128000
+
+[models."zenmux-openai_gpt-5_3-codex"]
+provider = "zenmux"
+model = "openai/gpt-5.3-codex"
+max_context_size = 65536
+
+[models."zenmux-anthropic_claude-opus-4_6"]
+provider = "zenmux"
+model = "anthropic/claude-opus-4.6"
+max_context_size = 200000
+
+[models."zenmux-stepfun_step-3_5-flash"]
+provider = "zenmux"
+model = "stepfun/step-3.5-flash"
+max_context_size = 65536
+
+[models."zenmux-moonshotai_kimi-k2_5"]
+provider = "zenmux"
+model = "moonshotai/kimi-k2.5"
+max_context_size = 65536
+
+[models."zenmux-qwen_qwen3-max"]
+provider = "zenmux"
+model = "qwen/qwen3-max"
+max_context_size = 131072
+
+[models."zenmux-minimax_minimax-m2-her"]
+provider = "zenmux"
+model = "minimax/minimax-m2-her"
+max_context_size = 65536
+
+[models."zenmux-baidu_ernie-5_0-thinking-preview"]
+provider = "zenmux"
+model = "baidu/ernie-5.0-thinking-preview"
+max_context_size = 65536
+
+[models."zenmux-z-ai_glm-4_7-flash-free"]
+provider = "zenmux"
+model = "z-ai/glm-4.7-flash-free"
+max_context_size = 128000
+
+[models."zenmux-z-ai_glm-4_7-flashx"]
+provider = "zenmux"
+model = "z-ai/glm-4.7-flashx"
+max_context_size = 128000
+
+[models."zenmux-openai_gpt-5_2-codex"]
+provider = "zenmux"
+model = "openai/gpt-5.2-codex"
+max_context_size = 65536
+
+[models."zenmux-qwen_qwen3-vl-embedding"]
+provider = "zenmux"
+model = "qwen/qwen3-vl-embedding"
+max_context_size = 131072
+
+[models."zenmux-z-ai_glm-4_7"]
+provider = "zenmux"
+model = "z-ai/glm-4.7"
+max_context_size = 128000
+
+[models."zenmux-minimax_minimax-m2_1"]
+provider = "zenmux"
+model = "minimax/minimax-m2.1"
+max_context_size = 65536
+
+[models."zenmux-bytedance_doubao-seed-1_8"]
+provider = "zenmux"
+model = "bytedance/doubao-seed-1.8"
+max_context_size = 65536
+
+[models."zenmux-google_gemini-3-flash-preview"]
+provider = "zenmux"
+model = "google/gemini-3-flash-preview"
+max_context_size = 1048576
+
+[models."zenmux-openai_gpt-image-1_5"]
+provider = "zenmux"
+model = "openai/gpt-image-1.5"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_2-pro"]
+provider = "zenmux"
+model = "openai/gpt-5.2-pro"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_2"]
+provider = "zenmux"
+model = "openai/gpt-5.2"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_2-chat"]
+provider = "zenmux"
+model = "openai/gpt-5.2-chat"
+max_context_size = 65536
+
+[models."zenmux-z-ai_glm-4_6v-flash-free"]
+provider = "zenmux"
+model = "z-ai/glm-4.6v-flash-free"
+max_context_size = 128000
+
+[models."zenmux-z-ai_glm-4_6v-flash"]
+provider = "zenmux"
+model = "z-ai/glm-4.6v-flash"
+max_context_size = 128000
+
+[models."zenmux-z-ai_glm-4_6v"]
+provider = "zenmux"
+model = "z-ai/glm-4.6v"
+max_context_size = 128000
+
+[models."zenmux-deepseek_deepseek-v3_2"]
+provider = "zenmux"
+model = "deepseek/deepseek-v3.2"
+max_context_size = 128000
+
+[models."zenmux-mistralai_mistral-large-2512"]
+provider = "zenmux"
+model = "mistralai/mistral-large-2512"
+max_context_size = 32768
+
+[models."zenmux-deepseek_deepseek-chat"]
+provider = "zenmux"
+model = "deepseek/deepseek-chat"
+max_context_size = 128000
+
+[models."zenmux-deepseek_deepseek-reasoner"]
+provider = "zenmux"
+model = "deepseek/deepseek-reasoner"
+max_context_size = 128000
+
+[models."zenmux-anthropic_claude-opus-4_5"]
+provider = "zenmux"
+model = "anthropic/claude-opus-4.5"
+max_context_size = 200000
+
+[models."zenmux-openai_gpt-5_1-codex"]
+provider = "zenmux"
+model = "openai/gpt-5.1-codex"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_1-chat"]
+provider = "zenmux"
+model = "openai/gpt-5.1-chat"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_1-codex-mini"]
+provider = "zenmux"
+model = "openai/gpt-5.1-codex-mini"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5_1"]
+provider = "zenmux"
+model = "openai/gpt-5.1"
+max_context_size = 65536
+
+[models."zenmux-bytedance_doubao-seed-code"]
+provider = "zenmux"
+model = "bytedance/doubao-seed-code"
+max_context_size = 65536
+
+[models."zenmux-openai_text-embedding-3-small"]
+provider = "zenmux"
+model = "openai/text-embedding-3-small"
+max_context_size = 65536
+
+[models."zenmux-openai_text-embedding-3-large"]
+provider = "zenmux"
+model = "openai/text-embedding-3-large"
+max_context_size = 65536
+
+[models."zenmux-minimax_minimax-m2"]
+provider = "zenmux"
+model = "minimax/minimax-m2"
+max_context_size = 65536
+
+[models."zenmux-anthropic_claude-haiku-4_5"]
+provider = "zenmux"
+model = "anthropic/claude-haiku-4.5"
+max_context_size = 200000
+
+[models."zenmux-openai_gpt-5-pro"]
+provider = "zenmux"
+model = "openai/gpt-5-pro"
+max_context_size = 65536
+
+[models."zenmux-z-ai_glm-4_6"]
+provider = "zenmux"
+model = "z-ai/glm-4.6"
+max_context_size = 128000
+
+[models."zenmux-anthropic_claude-sonnet-4_5"]
+provider = "zenmux"
+model = "anthropic/claude-sonnet-4.5"
+max_context_size = 200000
+
+[models."zenmux-deepseek_deepseek-v3_2-exp"]
+provider = "zenmux"
+model = "deepseek/deepseek-v3.2-exp"
+max_context_size = 128000
+
+[models."zenmux-qwen_qwen3-vl-plus"]
+provider = "zenmux"
+model = "qwen/qwen3-vl-plus"
+max_context_size = 131072
+
+[models."zenmux-openai_gpt-5-codex"]
+provider = "zenmux"
+model = "openai/gpt-5-codex"
+max_context_size = 65536
+
+[models."zenmux-baidu_ernie-x1_1-preview"]
+provider = "zenmux"
+model = "baidu/ernie-x1.1-preview"
+max_context_size = 65536
+
+[models."zenmux-qwen_qwen3-asr-flash"]
+provider = "zenmux"
+model = "qwen/qwen3-asr-flash"
+max_context_size = 131072
+
+[models."zenmux-deepseek_deepseek-chat-v3_1"]
+provider = "zenmux"
+model = "deepseek/deepseek-chat-v3.1"
+max_context_size = 128000
+
+[models."zenmux-openai_gpt-5"]
+provider = "zenmux"
+model = "openai/gpt-5"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5-nano"]
+provider = "zenmux"
+model = "openai/gpt-5-nano"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5-mini"]
+provider = "zenmux"
+model = "openai/gpt-5-mini"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-5-chat"]
+provider = "zenmux"
+model = "openai/gpt-5-chat"
+max_context_size = 65536
+
+[models."zenmux-anthropic_claude-opus-4_1"]
+provider = "zenmux"
+model = "anthropic/claude-opus-4.1"
+max_context_size = 200000
+
+[models."zenmux-stepfun_step-3"]
+provider = "zenmux"
+model = "stepfun/step-3"
+max_context_size = 65536
+
+[models."zenmux-z-ai_glm-4_5-air"]
+provider = "zenmux"
+model = "z-ai/glm-4.5-air"
+max_context_size = 128000
+
+[models."zenmux-z-ai_glm-4_5"]
+provider = "zenmux"
+model = "z-ai/glm-4.5"
+max_context_size = 128000
+
+[models."zenmux-qwen_qwen3-coder-plus"]
+provider = "zenmux"
+model = "qwen/qwen3-coder-plus"
+max_context_size = 131072
+
+[models."zenmux-google_gemini-2_5-flash-lite"]
+provider = "zenmux"
+model = "google/gemini-2.5-flash-lite"
+max_context_size = 1048576
+
+[models."zenmux-qwen_qwen3-235b-a22b-2507"]
+provider = "zenmux"
+model = "qwen/qwen3-235b-a22b-2507"
+max_context_size = 131072
+
+[models."zenmux-qwen_qwen3-235b-a22b-thinking-2507"]
+provider = "zenmux"
+model = "qwen/qwen3-235b-a22b-thinking-2507"
+max_context_size = 131072
+
+[models."zenmux-qwen_qwen3-coder"]
+provider = "zenmux"
+model = "qwen/qwen3-coder"
+max_context_size = 131072
+
+[models."zenmux-google_gemini-2_5-flash"]
+provider = "zenmux"
+model = "google/gemini-2.5-flash"
+max_context_size = 1048576
+
+[models."zenmux-google_gemini-2_5-pro"]
+provider = "zenmux"
+model = "google/gemini-2.5-pro"
+max_context_size = 1048576
+
+[models."zenmux-deepseek_deepseek-r1-0528"]
+provider = "zenmux"
+model = "deepseek/deepseek-r1-0528"
+max_context_size = 128000
+
+[models."zenmux-anthropic_claude-opus-4"]
+provider = "zenmux"
+model = "anthropic/claude-opus-4"
+max_context_size = 200000
+
+[models."zenmux-anthropic_claude-sonnet-4"]
+provider = "zenmux"
+model = "anthropic/claude-sonnet-4"
+max_context_size = 200000
+
+[models."zenmux-qwen_qwen3-14b"]
+provider = "zenmux"
+model = "qwen/qwen3-14b"
+max_context_size = 131072
+
+[models."zenmux-openai_o4-mini"]
+provider = "zenmux"
+model = "openai/o4-mini"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-4_1-mini"]
+provider = "zenmux"
+model = "openai/gpt-4.1-mini"
+max_context_size = 128000
+
+[models."zenmux-openai_gpt-4_1-nano"]
+provider = "zenmux"
+model = "openai/gpt-4.1-nano"
+max_context_size = 128000
+
+[models."zenmux-openai_gpt-4_1"]
+provider = "zenmux"
+model = "openai/gpt-4.1"
+max_context_size = 128000
+
+[models."zenmux-meta_llama-4-scout-17b-16e-instruct"]
+provider = "zenmux"
+model = "meta/llama-4-scout-17b-16e-instruct"
+max_context_size = 65536
+
+[models."zenmux-meta_llama-3_3-70b-instruct"]
+provider = "zenmux"
+model = "meta/llama-3.3-70b-instruct"
+max_context_size = 128000
+
+[models."zenmux-openai_gpt-4o-mini"]
+provider = "zenmux"
+model = "openai/gpt-4o-mini"
+max_context_size = 65536
+
+[models."zenmux-openai_gpt-4o"]
+provider = "zenmux"
+model = "openai/gpt-4o"
+max_context_size = 65536
+[models."bs-meta-llama-3-1-8b-instruct"]
+provider = "bluesminds"
+model = "meta/llama-3.1-8b-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-3-nano-30b-a3b"]
+provider = "bluesminds"
+model = "nvidia/nemotron-3-nano-30b-a3b"
+max_context_size = 128000
+
+[models."bs-nvidia-riva-translate-4b-instruct"]
+provider = "bluesminds"
+model = "nvidia/riva-translate-4b-instruct"
+max_context_size = 128000
+
+[models."bs-google-gemma-3-12b-it"]
+provider = "bluesminds"
+model = "google/gemma-3-12b-it"
+max_context_size = 128000
+
+[models."bs-upstage-solar-10-7b-instruct"]
+provider = "bluesminds"
+model = "upstage/solar-10.7b-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-1-nemotron-nano-vl-8b-v1"]
+provider = "bluesminds"
+model = "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"
+max_context_size = 128000
+
+[models."bs-mistralai-mixtral-8x22b-v0-1"]
+provider = "bluesminds"
+model = "mistralai/mixtral-8x22b-v0.1"
+max_context_size = 128000
+
+[models."bs-mistralai-mistral-7b-instruct-v0-3"]
+provider = "bluesminds"
+model = "mistralai/mistral-7b-instruct-v0.3"
+max_context_size = 128000
+
+[models."bs-meta-llama-3-2-11b-vision-instruct"]
+provider = "bluesminds"
+model = "meta/llama-3.2-11b-vision-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-4-340b-instruct"]
+provider = "bluesminds"
+model = "nvidia/nemotron-4-340b-instruct"
+max_context_size = 128000
+
+[models."bs-google-gemma-2b"]
+provider = "bluesminds"
+model = "google/gemma-2b"
+max_context_size = 128000
+
+[models."bs-gpt-5-mini"]
+provider = "bluesminds"
+model = "gpt-5-mini"
+max_context_size = 128000
+
+[models."bs-mistralai-mistral-small-4-119b-2603"]
+provider = "bluesminds"
+model = "mistralai/mistral-small-4-119b-2603"
+max_context_size = 128000
+
+[models."bs-nv-mistralai-mistral-nemo-12b-instruct"]
+provider = "bluesminds"
+model = "nv-mistralai/mistral-nemo-12b-instruct"
+max_context_size = 128000
+
+[models."bs-mistralai-mistral-large-3-675b-instruct-2512"]
+provider = "bluesminds"
+model = "mistralai/mistral-large-3-675b-instruct-2512"
+max_context_size = 128000
+
+[models."bs-bytedance-seed-oss-36b-instruct"]
+provider = "bluesminds"
+model = "bytedance/seed-oss-36b-instruct"
+max_context_size = 128000
+
+[models."bs-google-codegemma-1-1-7b"]
+provider = "bluesminds"
+model = "google/codegemma-1.1-7b"
+max_context_size = 128000
+
+[models."bs-stockmark-stockmark-2-100b-instruct"]
+provider = "bluesminds"
+model = "stockmark/stockmark-2-100b-instruct"
+max_context_size = 128000
+
+[models."bs-qwen-qwen3-5-397b-a17b"]
+provider = "bluesminds"
+model = "qwen/qwen3.5-397b-a17b"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-3-nano-omni-30b-a3b-reasoning"]
+provider = "bluesminds"
+model = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+max_context_size = 128000
+
+[models."bs-z-ai-glm5"]
+provider = "bluesminds"
+model = "z-ai/glm5"
+max_context_size = 128000
+
+[models."bs-meta-llama-3-1-70b-instruct"]
+provider = "bluesminds"
+model = "meta/llama-3.1-70b-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-nano-12b-v2-vl"]
+provider = "bluesminds"
+model = "nvidia/nemotron-nano-12b-v2-vl"
+max_context_size = 128000
+
+[models."bs-01-ai-yi-large"]
+provider = "bluesminds"
+model = "01-ai/yi-large"
+max_context_size = 128000
+
+[models."bs-mistralai-codestral-22b-instruct-v0-1"]
+provider = "bluesminds"
+model = "mistralai/codestral-22b-instruct-v0.1"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-2-nemoretriever-300m-embed-v1"]
+provider = "bluesminds"
+model = "nvidia/llama-3.2-nemoretriever-300m-embed-v1"
+max_context_size = 128000
+
+[models."bs-nvidia-vila"]
+provider = "bluesminds"
+model = "nvidia/vila"
+max_context_size = 128000
+
+[models."bs-z-ai-glm-5-1"]
+provider = "bluesminds"
+model = "z-ai/glm-5.1"
+max_context_size = 128000
+
+[models."bs-mistralai-ministral-14b-instruct-2512"]
+provider = "bluesminds"
+model = "mistralai/ministral-14b-instruct-2512"
+max_context_size = 128000
+
+[models."bs-meta-llama-3-2-1b-instruct"]
+provider = "bluesminds"
+model = "meta/llama-3.2-1b-instruct"
+max_context_size = 128000
+
+[models."bs-google-gemma-4-31b-it"]
+provider = "bluesminds"
+model = "google/gemma-4-31b-it"
+max_context_size = 128000
+
+[models."bs-nvidia-ai-synthetic-video-detector"]
+provider = "bluesminds"
+model = "nvidia/ai-synthetic-video-detector"
+max_context_size = 128000
+
+[models."bs-meta-llama-guard-4-12b"]
+provider = "bluesminds"
+model = "meta/llama-guard-4-12b"
+max_context_size = 128000
+
+[models."bs-deepseek-ai-deepseek-v4-flash"]
+provider = "bluesminds"
+model = "deepseek-ai/deepseek-v4-flash"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-nemotron-embed-1b-v2"]
+provider = "bluesminds"
+model = "nvidia/llama-nemotron-embed-1b-v2"
+max_context_size = 128000
+
+[models."bs-abacusai-dracarys-llama-3-1-70b-instruct"]
+provider = "bluesminds"
+model = "abacusai/dracarys-llama-3.1-70b-instruct"
+max_context_size = 128000
+
+[models."bs-writer-palmyra-fin-70b-32k"]
+provider = "bluesminds"
+model = "writer/palmyra-fin-70b-32k"
+max_context_size = 128000
+
+[models."bs-ibm-granite-34b-code-instruct"]
+provider = "bluesminds"
+model = "ibm/granite-34b-code-instruct"
+max_context_size = 128000
+
+[models."bs-z-ai-glm4-7"]
+provider = "bluesminds"
+model = "z-ai/glm4.7"
+max_context_size = 128000
+
+[models."bs-writer-palmyra-med-70b-32k"]
+provider = "bluesminds"
+model = "writer/palmyra-med-70b-32k"
+max_context_size = 128000
+
+[models."bs-writer-palmyra-med-70b"]
+provider = "bluesminds"
+model = "writer/palmyra-med-70b"
+max_context_size = 128000
+
+[models."bs-z-ai-glm-5-2"]
+provider = "bluesminds"
+model = "z-ai/glm-5.2"
+max_context_size = 128000
+
+[models."bs-openai-gpt-oss-120b"]
+provider = "bluesminds"
+model = "openai/gpt-oss-120b"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-mini-4b-instruct"]
+provider = "bluesminds"
+model = "nvidia/nemotron-mini-4b-instruct"
+max_context_size = 128000
+
+[models."bs-mistralai-mistral-large"]
+provider = "bluesminds"
+model = "mistralai/mistral-large"
+max_context_size = 128000
+
+[models."bs-nvidia-cosmos-reason2-8b"]
+provider = "bluesminds"
+model = "nvidia/cosmos-reason2-8b"
+max_context_size = 128000
+
+[models."bs-mistralai-mixtral-8x22b-instruct-v0-1"]
+provider = "bluesminds"
+model = "mistralai/mixtral-8x22b-instruct-v0.1"
+max_context_size = 128000
+
+[models."bs-mistralai-mistral-large-2-instruct"]
+provider = "bluesminds"
+model = "mistralai/mistral-large-2-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-nv-embedqa-mistral-7b-v2"]
+provider = "bluesminds"
+model = "nvidia/nv-embedqa-mistral-7b-v2"
+max_context_size = 128000
+
+[models."bs-meta-codellama-70b"]
+provider = "bluesminds"
+model = "meta/codellama-70b"
+max_context_size = 128000
+
+[models."bs-stepfun-ai-step-3-5-flash"]
+provider = "bluesminds"
+model = "stepfun-ai/step-3.5-flash"
+max_context_size = 128000
+
+[models."bs-google-codegemma-7b"]
+provider = "bluesminds"
+model = "google/codegemma-7b"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-content-safety-reasoning-4b"]
+provider = "bluesminds"
+model = "nvidia/nemotron-content-safety-reasoning-4b"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-1-nemotron-70b-instruct"]
+provider = "bluesminds"
+model = "nvidia/llama-3.1-nemotron-70b-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-3-super-120b-a12b"]
+provider = "bluesminds"
+model = "nvidia/nemotron-3-super-120b-a12b"
+max_context_size = 128000
+
+[models."bs-nvidia-nv-embedqa-e5-v5"]
+provider = "bluesminds"
+model = "nvidia/nv-embedqa-e5-v5"
+max_context_size = 128000
+
+[models."bs-mimo-v2-5"]
+provider = "bluesminds"
+model = "mimo-v2.5"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-parse"]
+provider = "bluesminds"
+model = "nvidia/nemotron-parse"
+max_context_size = 128000
+
+[models."bs-nvidia-nv-embed-v1"]
+provider = "bluesminds"
+model = "nvidia/nv-embed-v1"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-1-nemotron-51b-instruct"]
+provider = "bluesminds"
+model = "nvidia/llama-3.1-nemotron-51b-instruct"
+max_context_size = 128000
+
+[models."bs-google-deplot"]
+provider = "bluesminds"
+model = "google/deplot"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-1-nemoguard-8b-content-safety"]
+provider = "bluesminds"
+model = "nvidia/llama-3.1-nemoguard-8b-content-safety"
+max_context_size = 128000
+
+[models."bs-hy3"]
+provider = "bluesminds"
+model = "hy3"
+max_context_size = 128000
+
+[models."bs-writer-palmyra-creative-122b"]
+provider = "bluesminds"
+model = "writer/palmyra-creative-122b"
+max_context_size = 128000
+
+[models."bs-databricks-dbrx-instruct"]
+provider = "bluesminds"
+model = "databricks/dbrx-instruct"
+max_context_size = 128000
+
+[models."bs-meta-llama-3-2-3b-instruct"]
+provider = "bluesminds"
+model = "meta/llama-3.2-3b-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-nvclip"]
+provider = "bluesminds"
+model = "nvidia/nvclip"
+max_context_size = 128000
+
+[models."bs-google-recurrentgemma-2b"]
+provider = "bluesminds"
+model = "google/recurrentgemma-2b"
+max_context_size = 128000
+
+[models."bs-qwen2-5"]
+provider = "bluesminds"
+model = "qwen2.5"
+max_context_size = 128000
+
+[models."bs-gpt-5-4"]
+provider = "bluesminds"
+model = "gpt-5.4"
+max_context_size = 128000
+
+[models."bs-gpt-4o"]
+provider = "bluesminds"
+model = "gpt-4o"
+max_context_size = 128000
+
+[models."bs-aisingapore-sea-lion-7b-instruct"]
+provider = "bluesminds"
+model = "aisingapore/sea-lion-7b-instruct"
+max_context_size = 128000
+
+[models."bs-microsoft-phi-3-5-moe-instruct"]
+provider = "bluesminds"
+model = "microsoft/phi-3.5-moe-instruct"
+max_context_size = 128000
+
+[models."bs-google-gemma-3n-e4b-it"]
+provider = "bluesminds"
+model = "google/gemma-3n-e4b-it"
+max_context_size = 128000
+
+[models."bs-deepseek-ai-deepseek-coder-6-7b-instruct"]
+provider = "bluesminds"
+model = "deepseek-ai/deepseek-coder-6.7b-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-2-nv-embedqa-1b-v2"]
+provider = "bluesminds"
+model = "nvidia/llama-3.2-nv-embedqa-1b-v2"
+max_context_size = 128000
+
+[models."bs-qwen-qwen3-5-122b-a10b"]
+provider = "bluesminds"
+model = "qwen/qwen3.5-122b-a10b"
+max_context_size = 128000
+
+[models."bs-minimaxai-minimax-m2-7"]
+provider = "bluesminds"
+model = "minimaxai/minimax-m2.7"
+max_context_size = 128000
+
+[models."bs-ibm-granite-3-0-8b-instruct"]
+provider = "bluesminds"
+model = "ibm/granite-3.0-8b-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-nvidia-nemotron-nano-9b-v2"]
+provider = "bluesminds"
+model = "nvidia/nvidia-nemotron-nano-9b-v2"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-2-nv-embedqa-1b-v1"]
+provider = "bluesminds"
+model = "nvidia/llama-3.2-nv-embedqa-1b-v1"
+max_context_size = 128000
+
+[models."bs-meta-llama-4-maverick-17b-128e-instruct"]
+provider = "bluesminds"
+model = "meta/llama-4-maverick-17b-128e-instruct"
+max_context_size = 128000
+
+[models."bs-gpt-5-2-chat"]
+provider = "bluesminds"
+model = "gpt-5.2-chat"
+max_context_size = 128000
+
+[models."bs-nvidia-mistral-nemo-minitron-8b-8k-instruct"]
+provider = "bluesminds"
+model = "nvidia/mistral-nemo-minitron-8b-8k-instruct"
+max_context_size = 128000
+
+[models."bs-ibm-granite-3-0-3b-a800m-instruct"]
+provider = "bluesminds"
+model = "ibm/granite-3.0-3b-a800m-instruct"
+max_context_size = 128000
+
+[models."bs-openai-gpt-oss-20b"]
+provider = "bluesminds"
+model = "openai/gpt-oss-20b"
+max_context_size = 128000
+
+[models."bs-mistralai-mistral-medium-3-5-128b"]
+provider = "bluesminds"
+model = "mistralai/mistral-medium-3.5-128b"
+max_context_size = 128000
+
+[models."bs-meta-llama-3-3-70b-instruct"]
+provider = "bluesminds"
+model = "meta/llama-3.3-70b-instruct"
+max_context_size = 128000
+
+[models."bs-zyphra-zamba2-7b-instruct"]
+provider = "bluesminds"
+model = "zyphra/zamba2-7b-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-nv-embedcode-7b-v1"]
+provider = "bluesminds"
+model = "nvidia/nv-embedcode-7b-v1"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-2-nemoretriever-1b-vlm-embed-v1"]
+provider = "bluesminds"
+model = "nvidia/llama-3.2-nemoretriever-1b-vlm-embed-v1"
+max_context_size = 128000
+
+[models."bs-sarvamai-sarvam-m"]
+provider = "bluesminds"
+model = "sarvamai/sarvam-m"
+max_context_size = 128000
+
+[models."bs-adept-fuyu-8b"]
+provider = "bluesminds"
+model = "adept/fuyu-8b"
+max_context_size = 128000
+
+[models."bs-mistralai-mixtral-8x7b-instruct-v0-1"]
+provider = "bluesminds"
+model = "mistralai/mixtral-8x7b-instruct-v0.1"
+max_context_size = 128000
+
+[models."bs-bigcode-starcoder2-15b"]
+provider = "bluesminds"
+model = "bigcode/starcoder2-15b"
+max_context_size = 128000
+
+[models."bs-deepseek-v4-flash"]
+provider = "bluesminds"
+model = "deepseek-v4-flash"
+max_context_size = 128000
+
+[models."bs-microsoft-phi-4-mini-instruct"]
+provider = "bluesminds"
+model = "microsoft/phi-4-mini-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-1-nemoguard-8b-topic-control"]
+provider = "bluesminds"
+model = "nvidia/llama-3.1-nemoguard-8b-topic-control"
+max_context_size = 128000
+
+[models."bs-nvidia-ising-calibration-1-35b-a3b"]
+provider = "bluesminds"
+model = "nvidia/ising-calibration-1-35b-a3b"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-4-340b-reward"]
+provider = "bluesminds"
+model = "nvidia/nemotron-4-340b-reward"
+max_context_size = 128000
+
+[models."bs-nvidia-gliner-pii"]
+provider = "bluesminds"
+model = "nvidia/gliner-pii"
+max_context_size = 128000
+
+[models."bs-baai-bge-m3"]
+provider = "bluesminds"
+model = "baai/bge-m3"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-1-nemotron-nano-8b-v1"]
+provider = "bluesminds"
+model = "nvidia/llama-3.1-nemotron-nano-8b-v1"
+max_context_size = 128000
+
+[models."bs-snowflake-arctic-embed-l"]
+provider = "bluesminds"
+model = "snowflake/arctic-embed-l"
+max_context_size = 128000
+
+[models."bs-ibm-granite-8b-code-instruct"]
+provider = "bluesminds"
+model = "ibm/granite-8b-code-instruct"
+max_context_size = 128000
+
+[models."bs-ai21labs-jamba-1-5-large-instruct"]
+provider = "bluesminds"
+model = "ai21labs/jamba-1.5-large-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-llama3-chatqa-1-5-70b"]
+provider = "bluesminds"
+model = "nvidia/llama3-chatqa-1.5-70b"
+max_context_size = 128000
+
+[models."bs-microsoft-kosmos-2"]
+provider = "bluesminds"
+model = "microsoft/kosmos-2"
+max_context_size = 128000
+
+[models."bs-google-gemma-2-2b-it"]
+provider = "bluesminds"
+model = "google/gemma-2-2b-it"
+max_context_size = 128000
+
+[models."bs-nvidia-riva-translate-4b-instruct-v1-1"]
+provider = "bluesminds"
+model = "nvidia/riva-translate-4b-instruct-v1.1"
+max_context_size = 128000
+
+[models."bs-mistralai-mistral-nemotron"]
+provider = "bluesminds"
+model = "mistralai/mistral-nemotron"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-3-content-safety"]
+provider = "bluesminds"
+model = "nvidia/nemotron-3-content-safety"
+max_context_size = 128000
+
+[models."bs-nvidia-neva-22b"]
+provider = "bluesminds"
+model = "nvidia/neva-22b"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-nemotron-embed-vl-1b-v2"]
+provider = "bluesminds"
+model = "nvidia/llama-nemotron-embed-vl-1b-v2"
+max_context_size = 128000
+
+[models."bs-meta-llama2-70b"]
+provider = "bluesminds"
+model = "meta/llama2-70b"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-3-nemotron-super-49b-v1"]
+provider = "bluesminds"
+model = "nvidia/llama-3.3-nemotron-super-49b-v1"
+max_context_size = 128000
+
+[models."bs-nvidia-nemoretriever-parse"]
+provider = "bluesminds"
+model = "nvidia/nemoretriever-parse"
+max_context_size = 128000
+
+[models."bs-moonshotai-kimi-k2-6"]
+provider = "bluesminds"
+model = "moonshotai/kimi-k2.6"
+max_context_size = 128000
+
+[models."bs-nvidia-nemotron-nano-3-30b-a3b"]
+provider = "bluesminds"
+model = "nvidia/nemotron-nano-3-30b-a3b"
+max_context_size = 128000
+
+[models."bs-deepseek-ai-deepseek-v4-pro"]
+provider = "bluesminds"
+model = "deepseek-ai/deepseek-v4-pro"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-3-nemotron-super-49b-v1-5"]
+provider = "bluesminds"
+model = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+max_context_size = 128000
+
+[models."bs-google-gemma-3-4b-it"]
+provider = "bluesminds"
+model = "google/gemma-3-4b-it"
+max_context_size = 128000
+
+[models."bs-nvidia-embed-qa-4"]
+provider = "bluesminds"
+model = "nvidia/embed-qa-4"
+max_context_size = 128000
+
+[models."bs-meta-llama-3-2-90b-vision-instruct"]
+provider = "bluesminds"
+model = "meta/llama-3.2-90b-vision-instruct"
+max_context_size = 128000
+
+[models."bs-google-gemma-3n-e2b-it"]
+provider = "bluesminds"
+model = "google/gemma-3n-e2b-it"
+max_context_size = 128000
+
+[models."bs-qwen-qwen3-next-80b-a3b-instruct"]
+provider = "bluesminds"
+model = "qwen/qwen3-next-80b-a3b-instruct"
+max_context_size = 128000
+
+[models."bs-microsoft-phi-4-multimodal-instruct"]
+provider = "bluesminds"
+model = "microsoft/phi-4-multimodal-instruct"
+max_context_size = 128000
+
+[models."bs-qwen-qwen3-coder-480b-a35b-instruct"]
+provider = "bluesminds"
+model = "qwen/qwen3-coder-480b-a35b-instruct"
+max_context_size = 128000
+
+[models."bs-microsoft-phi-3-vision-128k-instruct"]
+provider = "bluesminds"
+model = "microsoft/phi-3-vision-128k-instruct"
+max_context_size = 128000
+
+[models."bs-nvidia-llama-3-1-nemotron-ultra-253b-v1"]
+provider = "bluesminds"
+model = "nvidia/llama-3.1-nemotron-ultra-253b-v1"
+max_context_size = 128000
+
+[models."bs-qwen-qwen3-next-80b-a3b-thinking"]
+provider = "bluesminds"
+model = "qwen/qwen3-next-80b-a3b-thinking"
+max_context_size = 128000
+
+
+[models."zenmux-stepfun-flash-free"]
+provider = "zenmux"
+model = "stepfun/step-3.7-flash-free"
+max_context_size = 128000
+
+[models."zenmux-glm-flash-free"]
+provider = "zenmux"
+model = "z-ai/glm-4.7-flash-free"
+max_context_size = 128000
+
+[models."zenmux-glm-vision-free"]
+provider = "zenmux"
+model = "z-ai/glm-4.6v-flash-free"
+max_context_size = 128000
+
+
+# ── AIAND Provider ─────────────────────────────────────────────────
+[providers.aiand]
+type = "openai"
+api_key = "__ENV_AIAND_API_KEY__"
+base_url = "https://api.aiand.com/v1"
+
+[models.aiand-glm-52]
+provider = "aiand"
+model = "zai-org/glm-5.2"
+max_context_size = 128000
+
+[models.aiand-kimi-k27-code]
+provider = "aiand"
+model = "moonshotai/kimi-k2.7-code"
+max_context_size = 128000
+
+[models.aiand-qwen36-27b]
+provider = "aiand"
+model = "qwen/qwen3.6-27b"
+max_context_size = 128000
+
+[models.aiand-deepseek-v4-pro]
+provider = "aiand"
+model = "deepseek-ai/deepseek-v4-pro"
+max_context_size = 128000
+
+[models.aiand-deepseek-v4-flash]
+provider = "aiand"
+model = "deepseek-ai/deepseek-v4-flash"
+max_context_size = 128000
+
+[models.aiand-gemma-4-31b]
+provider = "aiand"
+model = "google/gemma-4-31b-it"
+max_context_size = 128000
+
+[models.aiand-gpt-oss-120b]
+provider = "aiand"
+model = "openai/gpt-oss-120b"
+max_context_size = 128000
+
+
+# ── Managed Provider: Kimi Code OAuth ─────────────────────────────
+[providers."managed:kimi-code"]
+base_url = "https://api.kimi.com/coding/v1"
+type = "kimi"
+api_key = ""
+
+[providers."managed:kimi-code".oauth]
+storage = "file"
+key = "oauth/kimi-code"
+
+
+[server]
+allowed_hosts = ["bore.pub", ".bore.pub", "localhost", "127.0.0.1"]
+

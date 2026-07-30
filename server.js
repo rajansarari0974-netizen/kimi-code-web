@@ -27,16 +27,42 @@ process.env.KIMI_CODE_HOME = KIMI_HOME;
 fs.mkdirSync(KIMI_HOME, { recursive: true });
 const SESSIONS_DIR = path.join(KIMI_HOME, "sessions");
 
-// ── Config.toml (base64 encoded, written only if missing) ────────
-const CONFIG_B64 = "ZGVmYXVsdF9tb2RlbCA9ICJkZWVwc2Vlay12NC1mbGFzaC1mcmVlIgoKW2Vudl0KVVZfVVNFX0lPX1VSSU5HID0gIjAiCkxJQlVWX05PX0lPX1VSSU5HID0gIjEiCgpbcHJvdmlkZXJzLm9wZW5jb2RlXQp0eXBlID0gIm9wZW5haSIKYXBpS2V5ID0gInNrLTR5VWNVanB0OUR1V3c3V2JIelh0SGtNemRMVzZReFFQb0JaNm12bUk4OWxqdUNTTWUwQWM5VXRWZWtETXluZnoiCmJhc2VfdXJsID0gImh0dHBzOi8vb3BlbmNvZGUuYWkvemVuL3YxIgoKW3Byb3ZpZGVycy5ibHVlc21pbmRzXQp0eXBlID0gIm9wZW5haSIKYXBpS2V5ID0gInNrLU4wbFgxVDJlWmczcjVWN3dZOWJBY0VkRmhKa01uT3BRclN0VXZXeFl6Q1loWSIKYmFzZV91cmwgPSAiaHR0cHM6Ly9hcGkuYmx1ZXNtaW5kcy5jb20vdjEiCgpbcHJvdmlkZXJzLmJsdWVzbWluZHMtYmFja3VwXQp0eXBlID0gIm9wZW5haSIKYXBpS2V5ID0gInNrLTY2Wm1INGtQMnFSOHRXMHlCM2RGNWdIN2pLOWxOMXBRM3NWNXhYN3pBOUMzQTVSIgpiYXNlX3VybCA9ICJodHRwczovL2FwaS5ibHVlc21pbmRzLmNvbS92MSIKCltwcm92aWRlcnMub21uaXJvdXRlXQp0eXBlID0gIm9wZW5haSIKYXBpS2V5ID0gIm5vLWF1dGgtcmVxdWlyZWQiCmJhc2VfdXJsID0gImh0dHA6Ly8xMjcuMC4wLjE6MjAxMjgvdjEiCgpbcHJvdmlkZXJzLnplbm11eF0KdHlwZSA9ICJvcGVuYWkiCmFwaUtleSA9ICJzay1tZy12MS0xZjI2OWE4YTdmMWM5NjM2YWJiN2IyZTQ2MjQ1MTNhZDNiM2FiNTdlZjY1NDVjMGZkZTVkOTA2MDc0N2IzM2E4IgpiYXNlX3VybCA9ICJodHRwczovL3plbm11eC5haS9hcGkvdjEiCgpbcHJvdmlkZXJzLmFpYW5kXQp0eXBlID0gIm9wZW5haSIKYXBpS2V5ID0gInNrLTZiNzUwMDExY2MwNDNkNGM3OTVkMjBkM2Q0Y2VkMjE0ZTBhYWE5OTZjMWE4YjAwMTUwM2Y4NmJiMzljODRlNjQiCmJhc2VfdXJsID0gImh0dHBzOi8vYXBpLmFpYW5kLmNvbS92MSIKClttb2RlbHMuZGVlcHNlZWstdjQtZmxhc2gtZnJlZV0KcHJvdmlkZXIgPSAib3BlbmNvZGUiCm1vZGVsID0gImRlZXBzZWVrLXY0LWZsYXNoLWZyZWUiCm1heF9jb250ZXh0X3NpemUgPSAxMjgwMDAK";
+// ── Config — read template from repo, substitute env vars ──
 const configPath = path.join(KIMI_HOME, "config.toml");
-if (!fs.existsSync(configPath)) {
-  try {
-    fs.writeFileSync(configPath, Buffer.from(CONFIG_B64, "base64").toString("utf-8"));
-    console.error("[setup] Config written to " + configPath);
-  } catch (e) {
-    console.error("[setup] Failed to write config: " + e.message);
+const repoConfigPath = path.join(__dirname, "config.toml");
+try {
+  let configContent = null;
+  if (fs.existsSync(repoConfigPath)) {
+    configContent = fs.readFileSync(repoConfigPath, "utf-8");
+    console.error("[setup] Loaded config template from repo (" + (Buffer.byteLength(configContent) / 1024).toFixed(0) + " KB)");
+  } else {
+    const CONFIG_B64 = "ZGVmYXVsdF9tb2RlbCA9ICJibHVlc21pbmRzLWdwdDUyLWNoYXQiCgpbZW52XQpVVl9VU0VfSU9fVVJJTkcgPSAiMCIKTElCVVZfTk9fSU9fVVJJTkcgPSAiMSI=";
+    configContent = Buffer.from(CONFIG_B64, "base64").toString("utf-8");
+    console.error("[setup] Loaded minimal config from base64 fallback");
   }
+  // Substitute env vars for API keys and password
+  const envMap = {
+    '__ENV_SERVER_PASSWORD__':     process.env.SERVER_PASSWORD,
+    '__ENV_OPENCODE_ZEN_API_KEY__': process.env.OPENCODE_ZEN_API_KEY,
+    '__ENV_BLUESMINDS_API_KEY__':  process.env.BLUESMINDS_API_KEY,
+    '__ENV_Z_AI_API_KEY__':       process.env.Z_AI_API_KEY,
+    '__ENV_ZENMUX_API_KEY__':     process.env.ZENMUX_API_KEY,
+    '__ENV_CLOUDFLARE_API_KEY__': process.env.CLOUDFLARE_API_KEY,
+    '__ENV_NVIDIA_API_KEY__':     process.env.NVIDIA_API_KEY,
+    '__ENV_AIAND_API_KEY__':      process.env.AIAND_API_KEY,
+  };
+  for (const [placeholder, envVal] of Object.entries(envMap)) {
+    if (envVal) {
+      // Replace all occurrences
+      while (configContent.includes(placeholder)) {
+        configContent = configContent.replace(placeholder, envVal);
+      }
+    }
+  }
+  fs.writeFileSync(configPath, configContent);
+  console.error("[setup] Config written to " + configPath);
+} catch (e) {
+  console.error("[setup] Failed to write config: " + e.message);
 }
 
 process.env.KIMI_CODE_ALLOWED_HOSTS = ".onrender.com,localhost,127.0.0.1";
