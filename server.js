@@ -15,7 +15,7 @@ const http = require("http");
 const PORT = parseInt(process.env.PORT) || 10000;
 
 // ── PostgreSQL config ─────────────────────────────────────────────
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://kimi_postgres_user:TXIdRdDqyyHVfDoxXIVRUGDYGLTCzMoL@dpg-d98sd9jtqb8s739mee80-a.oregon-postgres.render.com:5432/kimi_postgres";
+const DATABASE_URL = process.env.DATABASE_URL || "";
 
 let pgPool = null;
 
@@ -75,6 +75,10 @@ process.env.KIMI_CODE_CORS_ORIGINS = "*";
 // ── PostgreSQL helpers ────────────────────────────────────────────
 
 async function initPostgres() {
+  if (!DATABASE_URL) {
+    console.error("[pg] No DATABASE_URL set, skipping PostgreSQL");
+    return false;
+  }
   try {
     const { Pool } = require("pg");
     pgPool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
