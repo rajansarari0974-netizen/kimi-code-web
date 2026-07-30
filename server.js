@@ -97,7 +97,8 @@ async function initPostgres() {
     // Test connection
     const client = await pgPool.connect();
     await client.query("SELECT 1");
-    // Create sessions table if not exists
+    // Ensure sessions table exists with the right schema
+    // Existing table may have different column names ('session_data' vs 'data')
     await client.query(`
       CREATE TABLE IF NOT EXISTS kimi_sessions (
         session_id TEXT PRIMARY KEY,
@@ -106,6 +107,18 @@ async function initPostgres() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
     `);
+    // If table was created by old code with 'session_data' column, add 'data' column
+    await client.query(`
+      ALTER TABLE kimi_sessions ADD COLUMN IF NOT EXISTS data BYTEA
+    `).catch(() => {});
+    // Remove old unused 'session_data' column if it exists
+    await client.query(`
+      ALTER TABLE kimi_sessions DROP COLUMN IF EXISTS session_data
+    `).catch(() => {});
+    // Remove old unused 'id' column if it exists
+    await client.query(`
+      ALTER TABLE kimi_sessions DROP COLUMN IF EXISTS id
+    `).catch(() => {});
     // Create index on updated_at
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_kimi_sessions_updated ON kimi_sessions(updated_at)
