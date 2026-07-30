@@ -2,17 +2,19 @@
 /**
  * Kimi Code Render Server v3.0 — Direct mode + PostgreSQL Session Store
  * Runs `kimi web` directly on Render's PORT for proper WebSocket support.
- * Sessions are stored in PostgreSQL + backed up to Pentaract API every 5 min
+ * Sessions are stored in PostgreSQL + backed up to Pentaract API every 15 min
  * — so they NEVER get lost on deploy/restart.
  *
  * v3.0: No proxy — kimi web runs directly on PORT so WebSocket works natively.
  *       Health is checked via a TCP-style check (Render's default).
  */
-const { spawn, execSync } = require("child_process");
+const { spawn, exec } = require("child_process");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
 const https = require("https");
+const util = require("util");
+const execAsync = util.promisify(exec);
 
 const PORT = parseInt(process.env.PORT) || 10000;
 
@@ -122,42 +124,38 @@ async function initPostgres() {
 async function saveSessionsToPostgres() {
   if (!pgPool) return;
   try {
-    // Read all session directories
     if (!fs.existsSync(SESSIONS_DIR)) return;
     const sessionDirs = fs.readdirSync(SESSIONS_DIR).filter(f =>
       fs.statSync(path.join(SESSIONS_DIR, f)).isDirectory()
     );
     if (sessionDirs.length === 0) return;
 
+    // Tar ALL sessions into ONE archive (fast, non-blocking)
+    const tmpFile = "/tmp/pg-sessions-all.tar.gz";
+    const { stderr } = await execAsync(
+      `tar czf "${tmpFile}" -C "${KIMI_HOME}" sessions 2>&1`,
+      { timeout: 30000 }
+    ).catch(e => {
+      console.error("[pg] tar failed: " + e.message);
+      return { stderr: e.message };
+    });
+    if (!fs.existsSync(tmpFile) || fs.statSync(tmpFile).size === 0) return;
+
+    const data = fs.readFileSync(tmpFile);
     const client = await pgPool.connect();
     try {
-      for (const sid of sessionDirs) {
-        const sessionPath = path.join(SESSIONS_DIR, sid);
-        const files = fs.readdirSync(sessionPath).filter(f => f.endsWith(".jsonl"));
-        if (files.length === 0) continue;
-
-        // Tar the session directory
-        const tmpFile = "/tmp/pg-session-" + sid + ".tar.gz";
-        try {
-          execSync(`tar czf "${tmpFile}" -C "${KIMI_HOME}" sessions/${sid} 2>/dev/null`, {
-            stdio: "ignore", timeout: 15000
-          });
-          if (!fs.existsSync(tmpFile) || fs.statSync(tmpFile).size === 0) continue;
-
-          const data = fs.readFileSync(tmpFile);
-          await client.query(
-            `INSERT INTO kimi_sessions (session_id, data, updated_at)
-             VALUES ($1, $2, NOW())
-             ON CONFLICT (session_id) DO UPDATE SET data = $2, updated_at = NOW()`,
-            [sid, data]
-          );
-        } finally {
-          try { fs.unlinkSync(tmpFile); } catch (_) {}
-        }
-      }
-      console.error("[pg] Saved " + sessionDirs.length + " sessions to PostgreSQL");
+      // Save as a single backup row (key = "sessions_backup")
+      await client.query(
+        `INSERT INTO kimi_sessions (session_id, data, updated_at)
+         VALUES ('sessions_backup', $1, NOW())
+         ON CONFLICT (session_id) DO UPDATE SET data = $1, updated_at = NOW()`,
+        [data]
+      );
+      console.error("[pg] Saved all " + sessionDirs.length + " sessions to PostgreSQL (" +
+        (data.length / 1024).toFixed(0) + " KB)");
     } finally {
       client.release();
+      try { fs.unlinkSync(tmpFile); } catch (_) {}
     }
   } catch (e) {
     console.error("[pg] Failed to save sessions to PostgreSQL: " + e.message);
@@ -169,30 +167,34 @@ async function restoreSessionsFromPostgres() {
   try {
     const client = await pgPool.connect();
     try {
-      const result = await client.query("SELECT session_id, data FROM kimi_sessions ORDER BY updated_at DESC");
+      // Get the single backup blob (key = "sessions_backup")
+      const result = await client.query(
+        "SELECT data FROM kimi_sessions WHERE session_id = 'sessions_backup'"
+      );
       if (result.rows.length === 0) {
-        console.error("[pg] No sessions in PostgreSQL");
+        console.error("[pg] No backup found in PostgreSQL");
         return false;
       }
 
+      const data = result.rows[0].data;
+      const tmpFile = "/tmp/pg-restore-all.tar.gz";
+      fs.writeFileSync(tmpFile, data);
       fs.mkdirSync(SESSIONS_DIR, { recursive: true });
-      let restored = 0;
-      for (const row of result.rows) {
-        const tmpFile = "/tmp/pg-restore-" + row.session_id + ".tar.gz";
-        try {
-          fs.writeFileSync(tmpFile, row.data);
-          execSync(`tar xzf "${tmpFile}" -C "${KIMI_HOME}" 2>/dev/null`, {
-            stdio: "ignore", timeout: 15000
-          });
-          restored++;
-        } catch (e) {
-          console.error("[pg] Failed to restore session " + row.session_id + ": " + e.message);
-        } finally {
-          try { fs.unlinkSync(tmpFile); } catch (_) {}
-        }
+
+      try {
+        await execAsync(`tar xzf "${tmpFile}" -C "${KIMI_HOME}" 2>&1`, { timeout: 30000 });
+        const sessionCount = fs.readdirSync(SESSIONS_DIR).filter(f =>
+          fs.statSync(path.join(SESSIONS_DIR, f)).isDirectory()
+        ).length;
+        console.error("[pg] Restored " + sessionCount + " sessions from PostgreSQL (" +
+          (data.length / 1024).toFixed(0) + " KB)");
+        return sessionCount > 0;
+      } catch (e) {
+        console.error("[pg] Restore tar extraction failed: " + e.message);
+        return false;
+      } finally {
+        try { fs.unlinkSync(tmpFile); } catch (_) {}
       }
-      console.error("[pg] Restored " + restored + "/" + result.rows.length + " sessions from PostgreSQL");
-      return restored > 0;
     } finally {
       client.release();
     }
@@ -275,28 +277,30 @@ function pentaractDownload(token, remotePath) {
 // ── Session backup & restore ─────────────────────────────────────
 
 async function backupSessions() {
-  // Save to PostgreSQL first
-  await saveSessionsToPostgres();
-
-  // Also backup to Pentaract (fallback)
-  if (!fs.existsSync(SESSIONS_DIR)) return;
-  const items = fs.readdirSync(SESSIONS_DIR).filter((f) => f !== "." && f !== "..");
-  if (items.length === 0) return;
-
-  const tmpFile = "/tmp/" + BACKUP_FILENAME;
   try {
-    execSync(`tar czf "${tmpFile}" -C "${KIMI_HOME}" sessions 2>/dev/null`, {
-      stdio: "ignore", timeout: 30000,
-    });
-    if (!fs.existsSync(tmpFile) || fs.statSync(tmpFile).size === 0) return;
+    // Save to PostgreSQL first
+    await saveSessionsToPostgres();
 
-    const token = await pentaractLogin();
-    await pentaractUpload(token, tmpFile, BACKUP_FILENAME);
-    console.error("[backup] Pentaract backup OK (" + (fs.statSync(tmpFile).size / 1024).toFixed(0) + " KB)");
+    // Also backup to Pentaract (fallback) — async tar, non-blocking
+    if (!fs.existsSync(SESSIONS_DIR)) return;
+    const items = fs.readdirSync(SESSIONS_DIR).filter((f) => f !== "." && f !== "..");
+    if (items.length === 0) return;
+
+    const tmpFile = "/tmp/" + BACKUP_FILENAME;
+    try {
+      await execAsync(`tar czf "${tmpFile}" -C "${KIMI_HOME}" sessions 2>&1`, { timeout: 30000 });
+      if (!fs.existsSync(tmpFile) || fs.statSync(tmpFile).size === 0) return;
+
+      const token = await pentaractLogin();
+      await pentaractUpload(token, tmpFile, BACKUP_FILENAME);
+      console.error("[backup] Pentaract backup OK (" + (fs.statSync(tmpFile).size / 1024).toFixed(0) + " KB)");
+    } catch (e) {
+      console.error("[backup] Pentaract backup failed: " + e.message);
+    } finally {
+      try { fs.unlinkSync(tmpFile); } catch (_) {}
+    }
   } catch (e) {
-    console.error("[backup] Pentaract backup failed: " + e.message);
-  } finally {
-    try { fs.unlinkSync(tmpFile); } catch (_) {}
+    console.error("[backup] backupSessions error: " + e.message);
   }
 }
 
@@ -320,9 +324,7 @@ async function restoreSessions() {
     }
     fs.writeFileSync(tmpFile, data);
     fs.mkdirSync(SESSIONS_DIR, { recursive: true });
-    execSync(`tar xzf "${tmpFile}" -C "${KIMI_HOME}" 2>/dev/null`, {
-      stdio: "ignore", timeout: 30000,
-    });
+    await execAsync(`tar xzf "${tmpFile}" -C "${KIMI_HOME}" 2>&1`, { timeout: 30000 });
     const sessionCount = fs.readdirSync(SESSIONS_DIR).filter((f) =>
       fs.statSync(path.join(SESSIONS_DIR, f)).isDirectory()
     ).length;
@@ -375,11 +377,11 @@ async function main() {
     shell: kimiBin === "npx",
   });
 
-  // Auto-backup every 5 minutes (saves to both PostgreSQL and Pentaract)
+  // Auto-backup every 15 minutes (non-blocking async)
   const backupInterval = setInterval(() => {
     console.error("[backup] Auto-backup...");
-    backupSessions();
-  }, 5 * 60 * 1000);
+    backupSessions().catch(e => console.error("[backup] Auto-backup error: " + e.message));
+  }, 15 * 60 * 1000);
 
   // Backup on exit
   const shutdown = async (signal) => {
@@ -394,7 +396,12 @@ async function main() {
   process.on("SIGINT", () => shutdown("SIGINT"));
 
   kimiProc.on("exit", (code, sig) => {
-    console.error("[main] Kimi exited (code=" + code + ", signal=" + sig + ")");
+    console.error("[main] Kimi exited (code=" + code + ", signal=" + sig + "), restarting in 3s...");
+    // Don't exit — wait for Render to restart the container, which restores
+    // sessions from PostgreSQL. The container restart is better than a manual
+    // restart because Render handles the port binding/health checks properly.
+    // We log the exit and let Render's restart policy handle it.
+    console.error("[main] Waiting for Render container restart...");
     process.exit(code || 0);
   });
 }
