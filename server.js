@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 /**
- * Kimi Code Render Server v3.0 — Direct mode + PostgreSQL Session Store
+ * Kimi Code Render Server v3.1 — Real-time PostgreSQL Session Store
  * Runs `kimi web` directly on Render's PORT for proper WebSocket support.
- * Sessions are stored in PostgreSQL + backed up to Pentaract API every 15 min
+ * Sessions are saved to PostgreSQL in REAL-TIME (within ~2s of any change)
+ * via file watcher, plus periodic backup every 5 min as safety net.
  * — so they NEVER get lost on deploy/restart.
  *
- * v3.0: No proxy — kimi web runs directly on PORT so WebSocket works natively.
- *       Health is checked via a TCP-style check (Render's default).
+ * v3.1: Real-time file watcher on session_index.jsonl + sessions dir.
+ *       Sessions backup to PG within ~2 seconds of any change (debounced).
+ *       5-min periodic backup as safety net.
+ *       No proxy — kimi web runs directly on PORT so WebSocket works natively.
  */
 const { spawn, exec } = require("child_process");
 const path = require("path");
@@ -379,10 +382,58 @@ async function restoreSessions() {
   }
 }
 
+// ── Real-time session watcher ────────────────────────────────
+
+let backupTimeout = null;
+let watchInitialized = false;
+
+function startSessionWatcher() {
+  if (watchInitialized) return;
+  watchInitialized = true;
+
+  const indexPath = path.join(KIMI_HOME, "session_index.jsonl");
+
+  // Debounced backup scheduler — waits 2s after LAST change, then saves
+  function scheduleBackup() {
+    if (backupTimeout) clearTimeout(backupTimeout);
+    backupTimeout = setTimeout(() => {
+      backupTimeout = null;
+      backupSessions().catch(e =>
+        console.error("[watcher] Backup error: " + e.message)
+      );
+    }, 2000);
+  }
+
+  // Watch session_index.jsonl for changes (session create/update/delete)
+  try {
+    if (fs.existsSync(indexPath)) {
+      fs.watch(indexPath, (eventType) => {
+        if (eventType === "change") scheduleBackup();
+      });
+      console.error("[watcher] Watching " + indexPath);
+    }
+  } catch (e) {
+    console.error("[watcher] Cannot watch index: " + e.message);
+  }
+
+  // Watch sessions directory for new/removed session folders
+  try {
+    if (fs.existsSync(SESSIONS_DIR)) {
+      fs.watch(SESSIONS_DIR, (eventType, filename) => {
+        if (filename && filename !== "." && filename !== "..")
+          scheduleBackup();
+      });
+      console.error("[watcher] Watching " + SESSIONS_DIR);
+    }
+  } catch (e) {
+    console.error("[watcher] Cannot watch sessions dir: " + e.message);
+  }
+}
+
 // ── Main ─────────────────────────────────────────────────────────
 
 async function main() {
-  console.error("=== Kimi Code Server v3.0 (Direct Mode + PostgreSQL Session Store) ===");
+  console.error("=== Kimi Code Server v3.1 (Real-time PG Session Store) ===");
   console.error("[main] PORT=" + PORT + " KIMI_HOME=" + KIMI_HOME);
 
   // Init PostgreSQL
@@ -422,16 +473,21 @@ async function main() {
     shell: kimiBin === "npx",
   });
 
-  // Auto-backup every 15 minutes (non-blocking async)
+  // Start real-time session watcher (saves to PG within ~2s of any change)
+  // Wait a few seconds after kimi starts so the session files/index exist
+  setTimeout(() => startSessionWatcher(), 5000);
+
+  // Periodic backup every 5 min as safety net
   const backupInterval = setInterval(() => {
-    console.error("[backup] Auto-backup...");
-    backupSessions().catch(e => console.error("[backup] Auto-backup error: " + e.message));
-  }, 15 * 60 * 1000);
+    console.error("[backup] Periodic backup...");
+    backupSessions().catch(e => console.error("[backup] Backup error: " + e.message));
+  }, 5 * 60 * 1000);
 
   // Backup on exit
   const shutdown = async (signal) => {
     console.error("[shutdown] " + signal + " received, backing up sessions...");
     clearInterval(backupInterval);
+    if (backupTimeout) clearTimeout(backupTimeout);
     await backupSessions();
     console.error("[shutdown] Backup done, forwarding " + signal + " to kimi...");
     kimiProc.kill(signal);
@@ -441,13 +497,15 @@ async function main() {
   process.on("SIGINT", () => shutdown("SIGINT"));
 
   kimiProc.on("exit", (code, sig) => {
-    console.error("[main] Kimi exited (code=" + code + ", signal=" + sig + "), restarting in 3s...");
-    // Don't exit — wait for Render to restart the container, which restores
-    // sessions from PostgreSQL. The container restart is better than a manual
-    // restart because Render handles the port binding/health checks properly.
-    // We log the exit and let Render's restart policy handle it.
-    console.error("[main] Waiting for Render container restart...");
-    process.exit(code || 0);
+    console.error("[main] Kimi exited (code=" + code + ", signal=" + sig + "), "
+      + "saving sessions one last time...");
+    // Save sessions immediately on exit
+    backupSessions().then(() => {
+      console.error("[main] Final backup done, exiting.");
+      process.exit(code || 0);
+    }).catch(() => {
+      process.exit(code || 0);
+    });
   });
 }
 
