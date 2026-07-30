@@ -18,6 +18,7 @@ const PORT = parseInt(process.env.PORT) || 10000;
 const DATABASE_URL = process.env.DATABASE_URL || "";
 
 let pgPool = null;
+let pgError = null;
 
 // ── Pentaract config (fallback) ───────────────────────────────────
 const PENTARACT_URL = "https://pentaract-i2os.onrender.com";
@@ -76,6 +77,7 @@ process.env.KIMI_CODE_CORS_ORIGINS = "*";
 
 async function initPostgres() {
   if (!DATABASE_URL) {
+    pgError = "DATABASE_URL not set";
     console.error("[pg] No DATABASE_URL set, skipping PostgreSQL");
     return false;
   }
@@ -102,6 +104,7 @@ async function initPostgres() {
     console.error("[pg] PostgreSQL connected & sessions table ready");
     return true;
   } catch (e) {
+    pgError = e.message;
     console.error("[pg] PostgreSQL init failed: " + e.message + " (will use Pentaract-only backup)");
     pgPool = null;
     return false;
@@ -345,7 +348,8 @@ function startMainServer(kimiPort) {
       res.end(JSON.stringify({
         connected: pgPool !== null,
         database_url: DATABASE_URL.replace(/\/\/[^:]+:([^@]+)@/, "//***:***@"),
-        sessions_table: "kimi_sessions"
+        sessions_table: "kimi_sessions",
+        error: pgError
       }, null, 2));
       return;
     }
