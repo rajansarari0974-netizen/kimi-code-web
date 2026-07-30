@@ -5,7 +5,7 @@ WORKDIR /app
 # Install curl for health checks
 RUN apt-get update -qq && apt-get install -y -qq ca-certificates curl && rm -rf /var/lib/apt/lists/*
 
-# Copy package files and install (only kimi-code, no pg/form-data)
+# Copy package files and install
 COPY package*.json ./
 RUN npm install --production 2>&1 | tail -5
 
