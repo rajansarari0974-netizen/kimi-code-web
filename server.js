@@ -323,30 +323,51 @@ async function restoreSessions() {
   }
 }
 
-// ── Health / Admin endpoint ──────────────────────────────────────
-function startHealthServer() {
+// ── Main proxy server ───────────────────────────────────────────
+// Listens on PORT. Handles /health and /kimi-admin/* directly.
+// Proxies everything else to kimi web running on KIMI_PORT.
+function startMainServer(kimiPort) {
   const server = http.createServer((req, res) => {
+    // Handle our own endpoints
     if (req.url === "/health") {
       const sessions = fs.existsSync(SESSIONS_DIR) ? fs.readdirSync(SESSIONS_DIR).filter(f => fs.statSync(path.join(SESSIONS_DIR, f)).isDirectory()).length : 0;
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "ok", sessions, pg_connected: pgPool !== null }));
-    } else if (req.url === "/kimi-admin/pg-info" && req.method === "GET") {
+      return;
+    }
+
+    if (req.url === "/kimi-admin/pg-info" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         connected: pgPool !== null,
         database_url: DATABASE_URL.replace(/\/\/[^:]+:([^@]+)@/, "//***:***@"),
         sessions_table: "kimi_sessions"
       }, null, 2));
-    } else {
-      res.writeHead(404);
-      res.end("Not found");
+      return;
     }
+
+    // Proxy everything else to kimi web
+    const proxyReq = http.request(
+      { hostname: "127.0.0.1", port: kimiPort, path: req.url, method: req.method, headers: req.headers },
+      (proxyRes) => {
+        // Copy status and headers
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res);
+      }
+    );
+    proxyReq.on("error", (e) => {
+      res.writeHead(502, { "Content-Type": "text/plain" });
+      res.end("Proxy error: " + e.message);
+    });
+    req.pipe(proxyReq);
   });
-  const healthPort = PORT + 1;
-  server.listen(healthPort, "127.0.0.1", () => {
-    console.error("[health] Health server on 127.0.0.1:" + healthPort);
+
+  server.listen(PORT, "0.0.0.0", () => {
+    console.error("[server] Main proxy server listening on 0.0.0.0:" + PORT);
   });
-  server.on("error", () => {});
+  server.on("error", (e) => {
+    console.error("[server] Main server error: " + e.message);
+  });
 }
 
 // ── Main ─────────────────────────────────────────────────────────
@@ -370,19 +391,26 @@ async function main() {
     try { return fs.existsSync(p); } catch (e) { return false; }
   }) || "npx";
 
+  // Kimi runs on PORT+1, our proxy runs on PORT
+  const KIMI_PORT = PORT + 1;
+
   const args = kimiBin === "npx"
     ? ["--yes", "@moonshot-ai/kimi-code", "web", "--no-open",
-       "--port", String(PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"]
+       "--port", String(KIMI_PORT), "--host", "127.0.0.1", "--dangerous-bypass-auth"]
     : ["web", "--no-open",
-       "--port", String(PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"];
+       "--port", String(KIMI_PORT), "--host", "127.0.0.1", "--dangerous-bypass-auth"];
 
-  console.error("[main] Starting Kimi: " + kimiBin + " " + args.join(" "));
+  console.error("[main] Starting Kimi on 127.0.0.1:" + KIMI_PORT);
+  console.error("[main] Cmd: " + kimiBin + " " + args.join(" "));
 
   const kimiProc = spawn(kimiBin, args, {
     stdio: ["ignore", "inherit", "inherit"],
-    env: { ...process.env, PORT: String(PORT) },
+    env: { ...process.env, PORT: String(KIMI_PORT) },
     shell: kimiBin === "npx",
   });
+
+  // Start proxy server (handles /health, /kimi-admin/*, proxies rest to kimi)
+  startMainServer(KIMI_PORT);
 
   // Auto-backup every 5 minutes (saves to both PostgreSQL and Pentaract)
   const backupInterval = setInterval(() => {
@@ -406,9 +434,6 @@ async function main() {
     console.error("[main] Kimi exited (code=" + code + ", signal=" + sig + ")");
     process.exit(code || 0);
   });
-
-  // Start health server for Render/Docker HEALTHCHECK
-  startHealthServer();
 }
 
 main().catch((e) => {
