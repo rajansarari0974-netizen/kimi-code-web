@@ -167,16 +167,42 @@ async function restoreSessionsFromPostgres() {
   try {
     const client = await pgPool.connect();
     try {
-      // Get the single backup blob (key = "sessions_backup")
-      const result = await client.query(
-        "SELECT data FROM kimi_sessions WHERE session_id = 'sessions_backup'"
+      // Step 1: try the single backup blob (key = "sessions_backup")
+      const blobResult = await client.query(
+        "SELECT data, updated_at FROM kimi_sessions WHERE session_id = 'sessions_backup'"
       );
-      if (result.rows.length === 0) {
-        console.error("[pg] No backup found in PostgreSQL");
+
+      // Step 2: if no blob, migrate old per-session rows into a single backup
+      if (blobResult.rows.length === 0) {
+        console.error("[pg] No sessions_backup blob, checking individual session rows...");
+        const oldRows = await client.query(
+          "SELECT session_id, data FROM kimi_sessions WHERE session_id != 'sessions_backup' ORDER BY updated_at DESC"
+        );
+        if (oldRows.rows.length > 0) {
+          console.error("[pg] Found " + oldRows.rows.length + " old session rows, extracting...");
+          fs.mkdirSync(SESSIONS_DIR, { recursive: true });
+          let restored = 0;
+          for (const row of oldRows.rows) {
+            const tmpFile = "/tmp/pg-migrate-" + row.session_id + ".tar.gz";
+            try {
+              fs.writeFileSync(tmpFile, row.data);
+              await execAsync(`tar xzf "${tmpFile}" -C "${KIMI_HOME}" 2>&1`, { timeout: 15000 });
+              restored++;
+            } catch (e) {
+              console.error("[pg] Failed to restore old session " + row.session_id + ": " + e.message);
+            } finally {
+              try { fs.unlinkSync(tmpFile); } catch (_) {}
+            }
+          }
+          console.error("[pg] Migrated " + restored + "/" + oldRows.rows.length + " old sessions");
+          return restored > 0;
+        }
+        console.error("[pg] No sessions at all in PostgreSQL");
         return false;
       }
 
-      const data = result.rows[0].data;
+      // Step 3: extract the single backup blob
+      const data = blobResult.rows[0].data;
       const tmpFile = "/tmp/pg-restore-all.tar.gz";
       fs.writeFileSync(tmpFile, data);
       fs.mkdirSync(SESSIONS_DIR, { recursive: true });
@@ -186,7 +212,7 @@ async function restoreSessionsFromPostgres() {
         const sessionCount = fs.readdirSync(SESSIONS_DIR).filter(f =>
           fs.statSync(path.join(SESSIONS_DIR, f)).isDirectory()
         ).length;
-        console.error("[pg] Restored " + sessionCount + " sessions from PostgreSQL (" +
+        console.error("[pg] Restored " + sessionCount + " sessions from PostgreSQL backup (" +
           (data.length / 1024).toFixed(0) + " KB)");
         return sessionCount > 0;
       } catch (e) {
@@ -351,6 +377,12 @@ async function main() {
 
   // Restore sessions (PostgreSQL primary, Pentaract fallback)
   await restoreSessions();
+
+  // IMMEDIATELY save sessions to PG after restore — creates sessions_backup
+  // row so future restores find it right away.
+  saveSessionsToPostgres().catch(e =>
+    console.error("[main] First-save error: " + e.message)
+  );
 
   // Find kimi binary
   const kimiPaths = [
