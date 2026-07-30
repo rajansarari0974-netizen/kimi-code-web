@@ -20,10 +20,10 @@ ENV KIMI_CODE_ALLOWED_HOSTS=.onrender.com,localhost,127.0.0.1
 
 EXPOSE 10000
 
-# Docker HEALTHCHECK
+# Docker HEALTHCHECK — kimi web serves its own UI on /
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -sf http://localhost:${PORT:-10000}/health || exit 1
+  CMD curl -sf http://localhost:${PORT:-10000}/ || exit 1
 
-# Minimal server — spawns kimi web internally, provides /health, proxies
+# Run kimi web directly — no proxy
 CMD ["node", "server.js"]
 

@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 /**
- * Kimi Code Render Server v2.0 — Direct mode + PostgreSQL Session Store
+ * Kimi Code Render Server v3.0 — Direct mode + PostgreSQL Session Store
  * Runs `kimi web` directly on Render's PORT for proper WebSocket support.
  * Sessions are stored in PostgreSQL + backed up to Pentaract API every 5 min
  * — so they NEVER get lost on deploy/restart.
+ *
+ * v3.0: No proxy — kimi web runs directly on PORT so WebSocket works natively.
+ *       Health is checked via a TCP-style check (Render's default).
  */
 const { spawn, execSync } = require("child_process");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
 const https = require("https");
-const http = require("http");
 
 const PORT = parseInt(process.env.PORT) || 10000;
 
@@ -64,11 +66,10 @@ try {
       }
     }
   }
-  // Remove the managed:kimi-code OAuth provider — it requires a login token
-  // that doesn't exist in a headless deploy, and causes a "No token for kimi-code"
-  // error in the web client's refreshAllProviders.
+  // Remove the managed:kimi-code OAuth provider section entirely
+  // (including the nested .oauth subsection) to prevent "No token" errors.
   configContent = configContent.replace(
-    /\[providers\."managed:kimi-code"\][^\[]*/,
+    /\[providers\."managed:kimi-code"\][\s\S]*?(?=\[providers\.|\[models\.|\[server\]|\[env\]|$)/,
     ""
   );
   fs.writeFileSync(configPath, configContent);
@@ -337,79 +338,10 @@ async function restoreSessions() {
   }
 }
 
-// ── Main proxy server ───────────────────────────────────────────
-// Listens on PORT. Handles /health and /kimi-admin/* directly.
-// Proxies everything else to kimi web running on KIMI_PORT.
-function startMainServer(kimiPort) {
-  const server = http.createServer((req, res) => {
-    // Handle our own endpoints
-    if (req.url === "/health") {
-      const sessions = fs.existsSync(SESSIONS_DIR) ? fs.readdirSync(SESSIONS_DIR).filter(f => fs.statSync(path.join(SESSIONS_DIR, f)).isDirectory()).length : 0;
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", sessions, pg_connected: pgPool !== null }));
-      return;
-    }
-
-    if (req.url === "/kimi-admin/pg-info" && req.method === "GET") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({
-        connected: pgPool !== null,
-        database_url: DATABASE_URL.replace(/\/\/[^:]+:([^@]+)@/, "//***:***@"),
-        sessions_table: "kimi_sessions",
-        error: pgError
-      }, null, 2));
-      return;
-    }
-
-    // Proxy everything else to kimi web
-    const proxyReq = http.request(
-      { hostname: "127.0.0.1", port: kimiPort, path: req.url, method: req.method, headers: req.headers },
-      (proxyRes) => {
-        // Copy status and headers
-        res.writeHead(proxyRes.statusCode, proxyRes.headers);
-        proxyRes.pipe(res);
-      }
-    );
-    proxyReq.on("error", (e) => {
-      res.writeHead(502, { "Content-Type": "text/plain" });
-      res.end("Proxy error: " + e.message);
-    });
-    req.pipe(proxyReq);
-  });
-
-  server.listen(PORT, "0.0.0.0", () => {
-    console.error("[server] Main proxy server listening on 0.0.0.0:" + PORT);
-  });
-  server.on("error", (e) => {
-    console.error("[server] Main server error: " + e.message);
-  });
-
-  // Handle WebSocket upgrades (required by kimi web for streaming responses)
-  server.on("upgrade", (req, socket, head) => {
-    const proxyReq = http.request({
-      hostname: "127.0.0.1",
-      port: kimiPort,
-      path: req.url,
-      method: "GET",
-      headers: req.headers
-    });
-    proxyReq.on("upgrade", (proxyRes, proxySocket) => {
-      proxySocket.pipe(socket);
-      socket.pipe(proxySocket);
-    });
-    proxyReq.on("error", (e) => {
-      console.error("[server] WS proxy error: " + e.message);
-      if (!socket.destroyed) socket.destroy();
-    });
-    proxyReq.end();
-    if (head && head.length > 0) proxyReq.write(head);
-  });
-}
-
 // ── Main ─────────────────────────────────────────────────────────
 
 async function main() {
-  console.error("=== Kimi Code Server v2.0 (PostgreSQL Session Store) ===");
+  console.error("=== Kimi Code Server v3.0 (Direct Mode + PostgreSQL Session Store) ===");
   console.error("[main] PORT=" + PORT + " KIMI_HOME=" + KIMI_HOME);
 
   // Init PostgreSQL
@@ -427,26 +359,21 @@ async function main() {
     try { return fs.existsSync(p); } catch (e) { return false; }
   }) || "npx";
 
-  // Kimi runs on PORT+1, our proxy runs on PORT
-  const KIMI_PORT = PORT + 1;
-
+  // Run kimi web DIRECTLY on PORT (no proxy - WebSocket works natively)
   const args = kimiBin === "npx"
     ? ["--yes", "@moonshot-ai/kimi-code", "web", "--no-open",
-       "--port", String(KIMI_PORT), "--host", "127.0.0.1", "--dangerous-bypass-auth"]
+       "--port", String(PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"]
     : ["web", "--no-open",
-       "--port", String(KIMI_PORT), "--host", "127.0.0.1", "--dangerous-bypass-auth"];
+       "--port", String(PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"];
 
-  console.error("[main] Starting Kimi on 127.0.0.1:" + KIMI_PORT);
+  console.error("[main] Starting Kimi web directly on 0.0.0.0:" + PORT);
   console.error("[main] Cmd: " + kimiBin + " " + args.join(" "));
 
   const kimiProc = spawn(kimiBin, args, {
     stdio: ["ignore", "inherit", "inherit"],
-    env: { ...process.env, PORT: String(KIMI_PORT) },
+    env: { ...process.env, PORT: String(PORT) },
     shell: kimiBin === "npx",
   });
-
-  // Start proxy server (handles /health, /kimi-admin/*, proxies rest to kimi)
-  startMainServer(KIMI_PORT);
 
   // Auto-backup every 5 minutes (saves to both PostgreSQL and Pentaract)
   const backupInterval = setInterval(() => {
