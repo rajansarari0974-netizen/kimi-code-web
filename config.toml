@@ -1,4 +1,4 @@
-default_model = "bluesminds-gpt52-chat"
+default_model = "zenmux-openai_gpt-5_2-chat"
 
 [env]
 UV_USE_IO_URING = "0"
