@@ -383,6 +383,27 @@ function startMainServer(kimiPort) {
   server.on("error", (e) => {
     console.error("[server] Main server error: " + e.message);
   });
+
+  // Handle WebSocket upgrades (required by kimi web for streaming responses)
+  server.on("upgrade", (req, socket, head) => {
+    const proxyReq = http.request({
+      hostname: "127.0.0.1",
+      port: kimiPort,
+      path: req.url,
+      method: "GET",
+      headers: req.headers
+    });
+    proxyReq.on("upgrade", (proxyRes, proxySocket) => {
+      proxySocket.pipe(socket);
+      socket.pipe(proxySocket);
+    });
+    proxyReq.on("error", (e) => {
+      console.error("[server] WS proxy error: " + e.message);
+      if (!socket.destroyed) socket.destroy();
+    });
+    proxyReq.end();
+    if (head && head.length > 0) proxyReq.write(head);
+  });
 }
 
 // ── Main ─────────────────────────────────────────────────────────
