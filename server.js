@@ -330,6 +330,9 @@ function pentaractDownload(token, remotePath) {
 
 async function backupSessions() {
   try {
+    // Self-heal registry files first so backups always carry a valid UI state
+    ensureRegistryFiles();
+
     // Save to PostgreSQL first
     await saveSessionsToPostgres();
 
@@ -392,6 +395,121 @@ async function restoreSessions() {
   }
 }
 
+// ── Registry self-healing ────────────────────────────────────
+// If workspaces.json / session_index.jsonl are missing or empty (e.g. an
+// older blob clobbered them), rebuild them from the session folders on disk.
+// kimi web reads these two files to populate the UI's workspace/session list,
+// so without them the UI shows an empty sidebar even though sessions exist.
+
+function isoFromMs(ms) {
+  const n = Number(ms);
+  if (!isFinite(n) || n <= 0) return new Date().toISOString();
+  return new Date(n).toISOString();
+}
+
+function ensureRegistryFiles() {
+  try {
+    if (!fs.existsSync(SESSIONS_DIR)) return;
+    const buckets = fs.readdirSync(SESSIONS_DIR).filter((f) => {
+      try { return fs.statSync(path.join(SESSIONS_DIR, f)).isDirectory(); }
+      catch (e) { return false; }
+    });
+    if (buckets.length === 0) return;
+
+    const wsPath = path.join(KIMI_HOME, "workspaces.json");
+    const idxPath = path.join(KIMI_HOME, "session_index.jsonl");
+
+    let workspaces = null;
+    try {
+      if (fs.existsSync(wsPath)) {
+        const parsed = JSON.parse(fs.readFileSync(wsPath, "utf-8"));
+        if (parsed && parsed.workspaces && Object.keys(parsed.workspaces).length > 0) {
+          workspaces = parsed.workspaces;
+        }
+      }
+    } catch (e) { workspaces = null; }
+
+    let indexLines = null;
+    try {
+      if (fs.existsSync(idxPath)) {
+        const content = fs.readFileSync(idxPath, "utf-8").trim();
+        if (content.length > 0) indexLines = content.split("\n").filter((l) => l.trim());
+      }
+    } catch (e) { indexLines = null; }
+
+    // Rebuild workspaces.json if missing/empty
+    if (!workspaces) {
+      const rebuilt = {};
+      const now = new Date().toISOString();
+      for (const bucket of buckets) {
+        const bucketAbs = path.join(SESSIONS_DIR, bucket);
+        let root = null, name = bucket, created = null, opened = null;
+        let entries = [];
+        try { entries = fs.readdirSync(bucketAbs); } catch (e) {}
+        for (const entry of entries) {
+          const statePath = path.join(bucketAbs, entry, "state.json");
+          try {
+            const st = JSON.parse(fs.readFileSync(statePath, "utf-8"));
+            if (st.cwd) root = st.cwd;
+            if (st.createdAt && created === null) created = isoFromMs(st.createdAt);
+            const openedMs = Number(st.updatedAt);
+            if (isFinite(openedMs) && openedMs > 0) opened = isoFromMs(openedMs);
+            break;
+          } catch (e) { continue; }
+        }
+        if (!root) {
+          root = bucket.startsWith("wd_root_") ? "/root" : bucketAbs;
+          name = bucket.startsWith("wd_root_") ? "root" : bucket;
+        } else {
+          name = bucket.startsWith("wd_root_") ? "root" : path.basename(root);
+        }
+        rebuilt[bucket] = {
+          root: root,
+          name: name,
+          created_at: created || now,
+          last_opened_at: opened || now,
+        };
+      }
+      fs.writeFileSync(wsPath, JSON.stringify({ version: 1, workspaces: rebuilt, deleted_workspace_ids: [] }, null, 2));
+      console.error("[registry] Rebuilt workspaces.json with " + Object.keys(rebuilt).length + " workspaces");
+    }
+
+    // Rebuild session_index.jsonl if missing/empty
+    if (!indexLines) {
+      const lines = [];
+      for (const bucket of buckets) {
+        const bucketAbs = path.join(SESSIONS_DIR, bucket);
+        let entries = [];
+        try { entries = fs.readdirSync(bucketAbs); } catch (e) {}
+        for (const entry of entries) {
+          const dirAbs = path.join(bucketAbs, entry);
+          try {
+            if (!fs.statSync(dirAbs).isDirectory()) continue;
+          } catch (e) { continue; }
+          let sid = entry, workDir = null;
+          const statePath = path.join(dirAbs, "state.json");
+          try {
+            const st = JSON.parse(fs.readFileSync(statePath, "utf-8"));
+            if (st.id) sid = st.id;
+            if (st.cwd) workDir = st.cwd;
+          } catch (e) {}
+          if (!workDir) {
+            try {
+              const wsParsed = workspaces || JSON.parse(fs.readFileSync(wsPath, "utf-8")).workspaces;
+              workDir = wsParsed[bucket] ? wsParsed[bucket].root : "/root";
+            } catch (e) { workDir = "/root"; }
+          }
+          lines.push(JSON.stringify({ sessionId: sid, sessionDir: dirAbs, workDir: workDir }));
+        }
+      }
+      fs.writeFileSync(idxPath, lines.join("\n") + (lines.length ? "\n" : ""));
+      console.error("[registry] Rebuilt session_index.jsonl with " + lines.length + " sessions");
+    }
+  } catch (e) {
+    console.error("[registry] ensureRegistryFiles error: " + e.message);
+  }
+}
+
 // ── Real-time session watcher ────────────────────────────────
 
 let backupTimeout = null;
@@ -451,6 +569,11 @@ async function main() {
 
   // Restore sessions (PostgreSQL primary, Pentaract fallback)
   await restoreSessions();
+
+  // Self-heal registry files from session folders BEFORE kimi web starts and
+  // before the first PG save — otherwise the UI shows an empty session list
+  // even though the session folders were restored.
+  ensureRegistryFiles();
 
   // IMMEDIATELY save sessions to PG after restore — creates sessions_backup
   // row so future restores find it right away.
