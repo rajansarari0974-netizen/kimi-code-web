@@ -137,6 +137,16 @@ async function initPostgres() {
   }
 }
 
+// Tar sessions + registry files (workspaces.json, session_index.jsonl) so
+// restores rebuild the UI's workspace list, not just the session folders.
+function tarSourceArgs() {
+  const args = ["sessions"];
+  for (const f of ["workspaces.json", "session_index.jsonl"]) {
+    if (fs.existsSync(path.join(KIMI_HOME, f))) args.push(f);
+  }
+  return args.join(" ");
+}
+
 async function saveSessionsToPostgres() {
   if (!pgPool) return;
   try {
@@ -149,7 +159,7 @@ async function saveSessionsToPostgres() {
     // Tar ALL sessions into ONE archive (fast, non-blocking)
     const tmpFile = "/tmp/pg-sessions-all.tar.gz";
     const { stderr } = await execAsync(
-      `tar czf "${tmpFile}" -C "${KIMI_HOME}" sessions 2>&1`,
+      `tar czf "${tmpFile}" -C "${KIMI_HOME}" ${tarSourceArgs()} 2>&1`,
       { timeout: 30000 }
     ).catch(e => {
       console.error("[pg] tar failed: " + e.message);
@@ -330,7 +340,7 @@ async function backupSessions() {
 
     const tmpFile = "/tmp/" + BACKUP_FILENAME;
     try {
-      await execAsync(`tar czf "${tmpFile}" -C "${KIMI_HOME}" sessions 2>&1`, { timeout: 30000 });
+      await execAsync(`tar czf "${tmpFile}" -C "${KIMI_HOME}" ${tarSourceArgs()} 2>&1`, { timeout: 30000 });
       if (!fs.existsSync(tmpFile) || fs.statSync(tmpFile).size === 0) return;
 
       const token = await pentaractLogin();
