@@ -1,0 +1,16 @@
+on.push:
+  branches:
+    - master
+name: keepalive
+on:
+  schedule:
+    - cron: '3/5 * * * *'
+  workerflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Kimi Code
+        run: curl -sI --arg null -m 3 -o /dev/null https://kimi-code-6we8.onrender.com/
+      - name: Ping Kimi Code (secondary)
+        run: curl -sI --arg null -m 3 -o /dev/null https://kimi-code-6we8.onrender.com/api/health
