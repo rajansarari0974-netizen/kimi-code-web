@@ -629,6 +629,7 @@ async function handleDiag(req, res) {
   const hm = path.join(os.homedir(), ".hermes");
   out.seedRan = !!global.__seedRan;
   out.gmPatched = !!global.__gmPatched;
+  out.gmReadyPatched = !!global.__gmReadyPatched;
   try {
     out.configYaml = maskKey(fs.readFileSync(path.join(hm, "config.yaml"), "utf-8"));
   } catch (e) { out.configYaml = "ERR " + e.message; }
@@ -811,6 +812,17 @@ cfg.platforms.api_server.key = (() => {
         fs.writeFileSync(gmFile, gm);
         global.__gmPatched = true;
         console.error("[main] Patched hermes-web-ui writeProfilePort (key wipe fix)");
+      }
+      // Widen waitForReady timeout: gateway takes ~7-10s to boot (update check,
+      // tirith install); 15s was flaky and caused random "stopped" states.
+      if (gm.includes("Date.now() + 15000") && !gm.includes("KIMI_READY_FIX")) {
+        gm = gm.replace(
+          "const deadline = Date.now() + 15000;",
+          "const deadline = Date.now() + 60000; /*KIMI_READY_FIX*/"
+        );
+        fs.writeFileSync(gmFile, gm);
+        global.__gmReadyPatched = true;
+        console.error("[main] Patched hermes-web-ui waitForReady timeout (15s -> 60s)");
       }
     }
   } catch (e) {
