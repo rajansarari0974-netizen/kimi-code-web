@@ -624,6 +624,53 @@ function maskKey(s) {
   return s.replace(/(key[:=\s]+)([A-Za-z0-9]{6})[A-Za-z0-9]+([A-Za-z0-9]{4})/g, "$1$2***$3");
 }
 
+// Boot-time fallback: if hermes-web-ui's own startAll() didn't bring the
+// gateway up (listProfiles → [] or CLI quirks), spawn it directly like the
+// diag test does. This makes /claw survive fresh container boots.
+async function ensureGatewayBoot() {
+  const hm = path.join(os.homedir(), ".hermes");
+  const healthUrl = "http://127.0.0.1:8642/health";
+  // Give web-ui (hermesProc) its own startAll() window first: it boots
+  // slower (update check + tirith install), so wait 20s before probing.
+  await new Promise((r) => setTimeout(r, 20000));
+  let healthy = false;
+  try {
+    const h = await httpGetHealth(healthUrl, 2500);
+    healthy = h.status === 200;
+  } catch (e) { healthy = false; }
+  if (healthy) {
+    console.error("[gateway-boot] Gateway already running (web-ui startAll OK)");
+    return;
+  }
+  console.error("[gateway-boot] Gateway NOT running after web-ui boot — spawning fallback...");
+  try {
+    const child = spawn(HERMES_BIN, ["gateway", "run", "--replace"], {
+      env: { ...process.env, HERMES_HOME: hm },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let log = "";
+    child.stdout.on("data", (d) => { log += d; if (log.length > 4000) log = log.slice(-4000); });
+    child.stderr.on("data", (d) => { log += d; if (log.length > 4000) log = log.slice(-4000); });
+    // Probe every 4s up to 60s
+    for (let i = 0; i < 15; i++) {
+      await new Promise((r) => setTimeout(r, 4000));
+      let ok = false;
+      try {
+        const h = await httpGetHealth(healthUrl, 2500);
+        ok = h.status === 200;
+      } catch (e) { ok = false; }
+      if (ok) {
+        child.unref();
+        console.error("[gateway-boot] Fallback gateway healthy after " + ((i + 1) * 4) + "s");
+        return;
+      }
+    }
+    console.error("[gateway-boot] Fallback gateway still not healthy — log tail:\n" + log.slice(-1500));
+  } catch (e) {
+    console.error("[gateway-boot] Spawn failed: " + e.message);
+  }
+}
+
 async function handleDiag(req, res) {
   const out = { ts: new Date().toISOString(), pid: process.pid };
   const hm = path.join(os.homedir(), ".hermes");
@@ -643,6 +690,8 @@ async function handleDiag(req, res) {
   } catch (e) { out.gmHasFix = "ERR " + e.message; }
   out.aiohttp = await execDiag("/opt/hermes/bin/python -c \"import aiohttp; print('aiohttp', aiohttp.__version__)\"", 15000);
   out.hermesVersion = await execDiag("/opt/hermes/bin/hermes --version", 15000);
+  out.profileListRaw = await execDiag("/opt/hermes/bin/hermes profile list 2>&1", 20000);
+  out.gmProfilesPatched = !!global.__gmProfilesPatched;
 
   // Direct gateway start test: spawn with same env as web-ui, probe /health
   // at 6/10/13s, dump processes+ports+hermes dir, then leave running if OK.
@@ -824,6 +873,19 @@ cfg.platforms.api_server.key = (() => {
         global.__gmReadyPatched = true;
         console.error("[main] Patched hermes-web-ui waitForReady timeout (15s -> 60s)");
       }
+      // listProfiles: if `hermes profile list` exits 0 but the CLI output doesn't
+      // match our row regex (or lists nothing), return ['default'] so startAll()
+      // still spawns the default gateway at boot. Empty list = nothing starts.
+      if (gm.includes("return profiles;\n        }\n        catch {") && !gm.includes("KIMI_PROFILES_FIX")) {
+        gm = gm.replace(
+          "            return profiles;\n        }\n        catch {",
+          "            return profiles.length ? profiles : ['default']; /*KIMI_PROFILES_FIX*/" +
+            "\n        }\n        catch {"
+        );
+        fs.writeFileSync(gmFile, gm);
+        global.__gmProfilesPatched = true;
+        console.error("[main] Patched hermes-web-ui listProfiles (empty -> ['default'])");
+      }
     }
   } catch (e) {
     console.error("[main] Hermes config seed failed: " + e.message);
@@ -854,6 +916,9 @@ cfg.platforms.api_server.key = (() => {
 
   // HTTP proxy on PORT
   const proxyServer = startProxy();
+
+  // Fallback: ensure gateway is up (web-ui startAll may return [] profiles)
+  ensureGatewayBoot().catch(e => console.error("[gateway-boot] Error: " + e.message));
 
   // Start real-time session watcher (saves to PG within ~2s of any change)
   // Wait a few seconds after kimi starts so the session files/index exist
