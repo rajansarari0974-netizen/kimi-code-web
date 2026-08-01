@@ -1,6 +1,13 @@
 /* kimi.com-style chrome script — injects the top nav, rebrands the
    sidebar, and keeps the light theme applied. All DOM access is
-   guarded; a MutationObserver re-applies after every app re-render. */
+   guarded; a MutationObserver re-applies the chrome after re-renders.
+
+   CRITICAL: the observer callback must never write the theme attributes
+   (data-color-scheme / data-accent). The app watches those attributes and
+   fights back — writing them from a MutationObserver callback creates an
+   endless mutation ping-pong that stalls page load in chromium. Theme
+   forcing therefore happens only in one-shot paths (startup, DOMContentLoaded,
+   delayed fallbacks), never in the observer. */
 (function () {
   "use strict";
 
@@ -77,13 +84,23 @@
     if (document.title !== "Kimi") document.title = "Kimi";
   }
 
-  function apply() {
+  /* Chrome-only pass — safe to run from the observer: no theme writes. */
+  function applyChrome() {
     try {
-      forceLight();
       ensureTopbar();
       ensureBrand();
       ensurePlaceholder();
       ensureTitle();
+    } catch (e) {
+      /* ignore — app may still be mounting */
+    }
+  }
+
+  /* Full pass — one-shot paths only (never from the observer). */
+  function apply() {
+    try {
+      forceLight();
+      applyChrome();
     } catch (e) {
       /* ignore — app may still be mounting */
     }
@@ -95,18 +112,18 @@
   var observer = null;
   try {
     observer = new MutationObserver(function () {
-      apply();
+      applyChrome();
     });
-    observer.observe(document.documentElement, {
+    observer.observe(document.body, {
       childList: true,
       subtree: true,
-      attributes: true,
-      attributeFilter: ["data-color-scheme", "data-accent"],
     });
   } catch (e) {
-    /* no MutationObserver — fall back to polling */
+    /* no MutationObserver — the one-shot fallbacks below still apply */
   }
 
-  /* Safety net: the app may re-apply "system" after async init */
-  setInterval(apply, 2000);
+  /* One-shot safety nets. A persistent setInterval here stalls the page in
+     chromium (timers + module bundle), and the observer handles re-renders. */
+  setTimeout(apply, 3000);
+  setTimeout(apply, 15000);
 })();

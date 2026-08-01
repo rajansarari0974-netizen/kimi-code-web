@@ -51,9 +51,19 @@ if (!html.includes("kimi-com.css")) {
 if (!html.includes("kimi-com.js")) {
   html = html.replace(
     "</body>",
-    '<script src="/kimi-com.js" defer></script>\n  </body>'
+    '<script src="/kimi-com.js"></script>\n  </body>'
   );
   console.log("[patch-ui] injected kimi-com.js");
+}
+/* Chromium deadlocks when a deferred classic script coexists with the
+   module bundle (DOMContentLoaded never fires) — make sure any older
+   defer-tagged copy from a previous patch run is converted to sync. */
+if (html.includes('<script src="/kimi-com.js" defer>')) {
+  html = html.replace(
+    '<script src="/kimi-com.js" defer></script>',
+    '<script src="/kimi-com.js"></script>'
+  );
+  console.log("[patch-ui] kimi-com.js defer -> sync");
 }
 if (html.includes("<title>Kimi Code Web</title>")) {
   html = html.replace("<title>Kimi Code Web</title>", "<title>Kimi</title>");
