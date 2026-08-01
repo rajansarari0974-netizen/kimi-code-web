@@ -10,7 +10,7 @@
     "@moonshot-ai/kimi-code": "^0.30.0",
     "pg": "^8.13.0",
     "http-proxy": "^1.18.1",
-    "hermes-web-ui": "^0.4.0"
+    "hermes-web-ui": "^0.6.36"
   },
   "engines": {
     "node": ">=18.0.0"
