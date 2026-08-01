@@ -84,6 +84,27 @@
     if (document.title !== "Kimi") document.title = "Kimi";
   }
 
+  /* Dismiss the first-run "Welcome to Kimi Web" dialog if it ever appears
+     (belt-and-suspenders — kimi-com-boot.js pre-sets kimi-web.onboarded,
+     so this normally never fires). Idempotent: one click, then done. */
+  var dismissedOnboarding = false;
+  function dismissOnboarding() {
+    if (dismissedOnboarding) return;
+    var btns = qsa("button");
+    for (var i = 0; i < btns.length; i++) {
+      var t = (btns[i].textContent || "").trim();
+      if (t === "Get started" || t === "Skip") {
+        try {
+          btns[i].click();
+          dismissedOnboarding = true;
+        } catch (e) {
+          /* ignore */
+        }
+        return;
+      }
+    }
+  }
+
   /* Chrome-only pass — safe to run from the observer: no theme writes. */
   function applyChrome() {
     try {
@@ -91,6 +112,7 @@
       ensureBrand();
       ensurePlaceholder();
       ensureTitle();
+      dismissOnboarding();
     } catch (e) {
       /* ignore — app may still be mounting */
     }
