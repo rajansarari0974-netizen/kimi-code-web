@@ -643,21 +643,29 @@ async function handleDiag(req, res) {
   out.aiohttp = await execDiag("/opt/hermes/bin/python -c \"import aiohttp; print('aiohttp', aiohttp.__version__)\"", 15000);
   out.hermesVersion = await execDiag("/opt/hermes/bin/hermes --version", 15000);
 
-  // Direct gateway start test: spawn with same env as web-ui, wait 6s,
-  // probe /health, then leave running if OK (gateway live = /claw works).
-  const testOut = { log: "", health: null, leftRunning: false };
+  // Direct gateway start test: spawn with same env as web-ui, probe /health
+  // at 6/10/13s, dump processes+ports+hermes dir, then leave running if OK.
+  const testOut = { log: "", probes: [], leftRunning: false };
   try {
     const child = spawn(HERMES_BIN, ["gateway", "run", "--replace"], {
       env: { ...process.env, HERMES_HOME: hm },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let log = "";
-    child.stdout.on("data", (d) => { log += d; if (log.length > 4000) log = log.slice(-4000); });
-    child.stderr.on("data", (d) => { log += d; if (log.length > 4000) log = log.slice(-4000); });
-    await new Promise((r) => setTimeout(r, 6000));
-    testOut.health = await httpGetHealth("http://127.0.0.1:8642/health", 2500);
-    testOut.log = log.slice(0, 4000);
-    if (testOut.health && testOut.health.status === 200) {
+    child.stdout.on("data", (d) => { log += d; if (log.length > 8000) log = log.slice(-8000); });
+    child.stderr.on("data", (d) => { log += d; if (log.length > 8000) log = log.slice(-8000); });
+    for (const sec of [6, 10, 13]) {
+      await new Promise((r) => setTimeout(r, sec === 6 ? 6000 : 4000));
+      testOut.probes.push({ at: sec, health: await httpGetHealth("http://127.0.0.1:8642/health", 2500) });
+    }
+    testOut.ps = await execDiag("ps aux | grep -i hermes | grep -v grep | head -10", 8000);
+    testOut.ports = await execDiag("(ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null) | grep -E '8642|8648|LISTEN' | head -15", 8000);
+    testOut.hermesDir = await execDiag("ls -la " + hm + " 2>&1 | head -25", 8000);
+    const logs = await execDiag("for f in " + hm + "/logs/* " + hm + "/errors.log " + hm + "/gateway.log; do [ -f \"$f\" ] && echo \"== $f ==\" && tail -15 \"$f\"; done 2>/dev/null", 8000);
+    testOut.logFiles = logs.slice(0, 2500);
+    testOut.log = log.slice(0, 8000);
+    const lastProbe = testOut.probes[testOut.probes.length - 1].health;
+    if (lastProbe && lastProbe.status === 200) {
       child.unref();
       testOut.leftRunning = true;
       console.error("[diag] Gateway test OK — left gateway running");
