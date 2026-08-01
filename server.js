@@ -624,6 +624,79 @@ function maskKey(s) {
   return s.replace(/(key[:=\s]+)([A-Za-z0-9]{6})[A-Za-z0-9]+([A-Za-z0-9]{4})/g, "$1$2***$3");
 }
 
+// Root /assets/* fallback → try hermes-web-ui first (Kimi Claw lazy chunks
+// were built with Vite base "/" and request /assets/* without the /claw
+// prefix), then fall through to kimi web on 404 so its own assets keep
+// working. Serves both from the same localhost pair — zero config, nothing
+// removed.
+function tryWebuiAsset(req, res) {
+  return new Promise((resolve) => {
+    const upReq = http.request(
+      {
+        host: "127.0.0.1",
+        port: HERMES_PORT,
+        path: req.url,
+        method: req.method,
+        headers: Object.assign({}, req.headers, { host: "127.0.0.1:" + HERMES_PORT }),
+      },
+      (upRes) => {
+        if (upRes.statusCode === 404) {
+          upRes.resume();
+          resolve(false);
+          return;
+        }
+        res.writeHead(upRes.statusCode, upRes.headers);
+        upRes.pipe(res);
+        resolve(true);
+      }
+    );
+    upReq.on("error", () => resolve(false));
+    upReq.end();
+  });
+}
+
+// Kimi Claw auto-login: the webui SPA gates the UI behind a login screen
+// until localStorage.hermes_api_key is set, but the gateway API key is
+// regenerated at every boot. Inject the current API_SERVER_KEY into the
+// served index.html so the Claw UI opens directly, no login prompt.
+// Idempotent: replaces any previous marker block with the fresh key.
+function injectClawKey() {
+  try {
+    const hermesHome = path.join(os.homedir(), ".hermes");
+    const envFile = path.join(hermesHome, ".env");
+    if (!fs.existsSync(envFile)) {
+      console.error("[claw-key] No .env yet, skipping inject");
+      return;
+    }
+    const envTxt = fs.readFileSync(envFile, "utf-8");
+    const m = envTxt.match(/^API_SERVER_KEY\s*=\s*"?([^"\n]+)"?/m);
+    if (!m || !m[1]) {
+      console.error("[claw-key] No API_SERVER_KEY in .env, skipping inject");
+      return;
+    }
+    const key = m[1].trim();
+    const idx = path.join(__dirname, "node_modules", "hermes-web-ui", "dist", "index.html");
+    if (!fs.existsSync(idx)) {
+      console.error("[claw-key] webui index.html not found");
+      return;
+    }
+    let html = fs.readFileSync(idx, "utf-8");
+    const marker = "KIMI_CLAW_KEY_INJECTED";
+    const script =
+      '<script id="' + marker + '">try{localStorage.setItem("hermes_api_key","' + key +
+      '");localStorage.setItem("hermes_server_url","")}catch(e){}</script>';
+    if (html.includes(marker)) {
+      html = html.replace(/<script id="KIMI_CLAW_KEY_INJECTED">[\s\S]*?<\/script>/, script);
+    } else {
+      html = html.replace("</head>", script + "\n</head>");
+    }
+    fs.writeFileSync(idx, html);
+    console.error("[claw-key] Injected Claw API key into webui index.html");
+  } catch (e) {
+    console.error("[claw-key] Inject failed: " + e.message);
+  }
+}
+
 // Boot-time fallback: if hermes-web-ui's own startAll() didn't bring the
 // gateway up (listProfiles → [] or CLI quirks), spawn it directly like the
 // diag test does. This makes /claw survive fresh container boots.
@@ -733,10 +806,20 @@ async function handleDiag(req, res) {
 }
 
 function startProxy() {
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
     if (req.url === "/_diag") {
       handleDiag(req, res);
       return;
+    }
+    // Kimi Claw lazy chunks (Vite base "/") request root /assets/*, but the
+    // webui only serves them under /claw/. Try the webui first; on 404 fall
+    // through to the normal proxy (kimi web keeps its own /assets/*).
+    if (req.url.startsWith("/assets/") || req.url === "/favicon.ico") {
+      try {
+        if (await tryWebuiAsset(req, res)) return;
+      } catch (e) {
+        console.error("[proxy] webui asset fallback error: " + e.message);
+      }
     }
     const target = routeTarget(req.url);
     if (target === HERMES_PORT) {
@@ -890,6 +973,9 @@ cfg.platforms.api_server.key = (() => {
   } catch (e) {
     console.error("[main] Hermes config seed failed: " + e.message);
   }
+
+  // Inject current API key into webui index.html (Claw auto-login, no login screen)
+  injectClawKey();
 
   // Start Kimi Claw (hermes-web-ui) on HERMES_PORT — non-fatal if missing
   let hermesProc = null;
