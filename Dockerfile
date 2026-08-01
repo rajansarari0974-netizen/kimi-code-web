@@ -13,7 +13,7 @@ RUN npm install --production 2>&1 | tail -5
 RUN npx --yes @moonshot-ai/kimi-code --version 2>/dev/null || true
 
 # Hermes agent (python) in an isolated venv — avoids PEP 668 system pip issues
-RUN python3 -m venv /opt/hermes && /opt/hermes/bin/pip install --no-cache-dir -U pip hermes-agent
+RUN python3 -m venv /opt/hermes && /opt/hermes/bin/pip install --no-cache-dir -U pip hermes-agent && /opt/hermes/bin/pip install --no-cache-dir aiohttp==3.14.1
 
 # Copy app source
 COPY . .
