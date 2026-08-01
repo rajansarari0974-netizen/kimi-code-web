@@ -104,3 +104,130 @@ body {
 .dock-workbar {
   border-radius: 12px;
 }
+
+/* ── Hamburger menu button ─────────────────────────────────────── */
+.kc-menu-btn {
+  margin-left: auto;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.kc-menu-btn span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: #6b7280;
+  transition: background 0.15s ease;
+}
+.kc-menu-btn:hover span {
+  background: #1783ff;
+}
+
+/* ── Menu dropdown ─────────────────────────────────────────────── */
+.kc-menu {
+  position: absolute;
+  top: 44px;
+  right: 12px;
+  display: none;
+  min-width: 210px;
+  background: #ffffff;
+  border: 1px solid #eef0f4;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(17, 24, 39, 0.12);
+  padding: 6px;
+  z-index: 99999;
+}
+.kc-menu.kc-open {
+  display: block;
+}
+.kc-menu a {
+  display: block;
+  padding: 10px 14px;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  border-radius: 8px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.kc-menu a:hover {
+  background: #f5f7fa;
+  color: #1783ff;
+}
+.kc-menu-divider {
+  border-top: 1px solid #eef0f4;
+  margin: 6px 0;
+}
+
+/* ── In-app full-screen embed (Kimi Work / Kimi Claw) ──────────── */
+.kc-embed {
+  position: fixed;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  background: #ffffff;
+  z-index: 100000;
+}
+.kc-embed.kc-open {
+  display: flex;
+}
+.kc-embed-head {
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #eef0f4;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.kc-embed-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+.kc-embed-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.kc-embed-ext {
+  color: #1783ff;
+  font-size: 13px;
+  text-decoration: none;
+}
+.kc-embed-ext:hover {
+  text-decoration: underline;
+}
+.kc-embed-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.kc-embed-close:hover {
+  background: #e5e7eb;
+}
+.kc-embed-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #ffffff;
+}

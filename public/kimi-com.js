@@ -1,13 +1,20 @@
-/* kimi.com-style chrome script — injects the top nav, rebrands the
-   sidebar, and keeps the light theme applied. All DOM access is
-   guarded; a MutationObserver re-applies the chrome after re-renders.
+/* kimi.com-style chrome script — injects the top nav (brand + hamburger
+   menu), rebrands the sidebar, and keeps the light theme applied. All DOM
+   access is guarded; a MutationObserver re-applies the chrome after
+   re-renders.
 
    CRITICAL: the observer callback must never write the theme attributes
    (data-color-scheme / data-accent). The app watches those attributes and
    fights back — writing them from a MutationObserver callback creates an
    endless mutation ping-pong that stalls page load in chromium. Theme
    forcing therefore happens only in one-shot paths (startup, DOMContentLoaded,
-   delayed fallbacks), never in the observer. */
+   delayed fallbacks), never in the observer.
+
+   Top bar: brand + hamburger menu button. All entries (Kimi Code, Kimi Work,
+   Kimi Claw, Get App, About Us, Get Help) live inside the menu dropdown.
+   Kimi Work / Kimi Claw open in-app in a full-screen iframe so the user
+   stays on this service; a "Naya tab me kholo" link is always available
+   as a fallback in case the remote site refuses to be framed. */
 (function () {
   "use strict";
 
@@ -28,10 +35,61 @@
     '</mask></defs>' +
     '<rect x="1" y="1" width="30" height="20" rx="6" fill="#1783ff" mask="url(#kcTopEyes)"></rect></svg>';
 
+  var MENU_ITEMS = [
+    { label: "Kimi Code", action: "local", href: "/" },
+    { label: "Kimi Work", action: "embed", href: "https://www.kimi.com" },
+    { label: "Kimi Claw", action: "embed", href: "https://www.kimi.com/claw" },
+    { divider: true },
+    { label: "Get App", action: "external", href: "https://www.kimi.com/download" },
+    { label: "About Us", action: "external", href: "https://www.kimi.com/about" },
+    { label: "Get Help", action: "external", href: "https://www.kimi.com/help" },
+  ];
+
   function forceLight() {
     var el = document.documentElement;
     el.dataset.colorScheme = "light";
     el.dataset.accent = "blue";
+  }
+
+  function toggleMenu(force) {
+    var menu = qs(".kc-menu");
+    if (!menu) return;
+    var open = force !== undefined ? !!force : !menu.classList.contains("kc-open");
+    menu.classList.toggle("kc-open", open);
+  }
+
+  /* Full-screen in-app embed (Kimi Work / Kimi Claw) */
+  function openEmbed(title, url) {
+    var ov = qs(".kc-embed");
+    if (!ov) {
+      ov = document.createElement("div");
+      ov.className = "kc-embed";
+      ov.innerHTML =
+        '<div class="kc-embed-head">' +
+        '<span class="kc-embed-title"></span>' +
+        '<div class="kc-embed-actions">' +
+        '<a class="kc-embed-ext" target="_blank" rel="noopener">Naya tab me kholo</a>' +
+        '<button class="kc-embed-close" aria-label="Close">&times;</button>' +
+        "</div></div>" +
+        '<iframe class="kc-embed-frame" allow="fullscreen; autoplay; clipboard-write" ' +
+        'sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>';
+      ov.querySelector(".kc-embed-close").addEventListener("click", closeEmbed);
+      ov.addEventListener("click", function (e) {
+        if (e.target === ov) closeEmbed();
+      });
+      document.body.appendChild(ov);
+    }
+    ov.querySelector(".kc-embed-title").textContent = title;
+    ov.querySelector(".kc-embed-ext").href = url;
+    ov.querySelector(".kc-embed-frame").src = url;
+    ov.classList.add("kc-open");
+  }
+
+  function closeEmbed() {
+    var ov = qs(".kc-embed");
+    if (!ov) return;
+    ov.classList.remove("kc-open");
+    ov.querySelector(".kc-embed-frame").src = "about:blank";
   }
 
   function ensureTopbar() {
@@ -41,29 +99,63 @@
 
     var brand = document.createElement("a");
     brand.className = "kc-brand";
-    brand.href = "https://www.kimi.com";
-    brand.target = "_blank";
-    brand.rel = "noopener";
+    brand.href = "/";
     brand.innerHTML = EYES_SVG + "<span>Kimi</span>";
 
-    var nav = document.createElement("nav");
-    nav.className = "kc-nav";
-    nav.innerHTML =
-      '<a href="https://www.kimi.com" target="_blank" rel="noopener">Kimi Work</a>' +
-      '<a href="/" class="kc-active">Kimi Code</a>' +
-      '<a href="https://www.kimi.com/claw" target="_blank" rel="noopener">Kimi Claw</a>';
+    var menuBtn = document.createElement("button");
+    menuBtn.className = "kc-menu-btn";
+    menuBtn.setAttribute("aria-label", "Menu");
+    menuBtn.setAttribute("aria-haspopup", "true");
+    menuBtn.innerHTML = '<span></span><span></span><span></span>';
+    menuBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      toggleMenu();
+    });
 
-    var right = document.createElement("div");
-    right.className = "kc-right";
-    right.innerHTML =
-      '<a href="https://www.kimi.com/download" target="_blank" rel="noopener">Get App</a>' +
-      '<a href="https://www.kimi.com/about" target="_blank" rel="noopener">About Us</a>' +
-      '<a href="https://www.kimi.com/help" target="_blank" rel="noopener">Get Help</a>';
+    var menu = document.createElement("div");
+    menu.className = "kc-menu";
+    MENU_ITEMS.forEach(function (item) {
+      if (item.divider) {
+        var d = document.createElement("div");
+        d.className = "kc-menu-divider";
+        menu.appendChild(d);
+        return;
+      }
+      var a = document.createElement("a");
+      a.textContent = item.label;
+      a.href = item.href || "#";
+      if (item.action === "embed") {
+        a.addEventListener("click", function (e) {
+          e.preventDefault();
+          toggleMenu(false);
+          openEmbed(item.label, item.href);
+        });
+      } else if (item.action === "local") {
+        a.addEventListener("click", function (e) {
+          e.preventDefault();
+          toggleMenu(false);
+          window.location.href = item.href;
+        });
+      } else {
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.addEventListener("click", function () {
+          toggleMenu(false);
+        });
+      }
+      menu.appendChild(a);
+    });
 
     tb.appendChild(brand);
-    tb.appendChild(nav);
-    tb.appendChild(right);
+    tb.appendChild(menuBtn);
+    tb.appendChild(menu);
     document.body.insertBefore(tb, document.body.firstChild);
+
+    document.addEventListener("click", function (e) {
+      if (e.target.closest && !e.target.closest(".kc-menu-btn") && !e.target.closest(".kc-menu")) {
+        toggleMenu(false);
+      }
+    });
   }
 
   function ensureBrand() {
