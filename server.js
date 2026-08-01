@@ -693,6 +693,35 @@ async function main() {
     fs.writeFileSync(path.join(hermesHome, "config.yaml"), configYaml);
     fs.writeFileSync(path.join(hermesHome, ".env"), "API_SERVER_KEY=" + apiKey + "\n");
     console.error("[main] Seeded Hermes gateway config in " + hermesHome);
+
+    // Patch hermes-web-ui writeProfilePort: it hard-codes key:'' and wipes our
+    // API_SERVER_KEY on every start, which makes the gateway refuse to launch.
+    const gmFile = path.join(__dirname, "node_modules/hermes-web-ui/dist/server/services/hermes/gateway-manager.js");
+    if (fs.existsSync(gmFile)) {
+      let gm = fs.readFileSync(gmFile, "utf-8");
+      if (gm.includes("cfg.platforms.api_server.key = '';") && !gm.includes("KIMI_KEY_FIX")) {
+        const fix = String.raw`
+cfg.platforms.api_server.key = (() => {
+          let k = '';
+          try {
+            const envP = path_1.join(this.profileDir(name), '.env');
+            if ((0, fs_1.existsSync)(envP)) {
+              const m = (0, fs_1.readFileSync)(envP, 'utf-8').match(/^API_SERVER_KEY\s*=\s*"?([^"\n]+)"?/m);
+              if (m) k = m[1].trim();
+            }
+            if (!k) {
+              k = require('crypto').randomBytes(32).toString('hex');
+              (0, fs_1.appendFileSync)(envP, 'API_SERVER_KEY=' + k + '\n');
+            }
+          } catch (_) {}
+          return k;
+        })();
+/*KIMI_KEY_FIX*/`;
+        gm = gm.replace("cfg.platforms.api_server.key = '';", fix);
+        fs.writeFileSync(gmFile, gm);
+        console.error("[main] Patched hermes-web-ui writeProfilePort (key wipe fix)");
+      }
+    }
   } catch (e) {
     console.error("[main] Hermes config seed failed: " + e.message);
   }
