@@ -12,7 +12,7 @@
     /* ignore */
   }
   try {
-    localStorage.setItem("kimi-web.onboarded", "true");
+    localStorage.setItem("kimi-web.onboarded", "1");
   } catch (e) {
     /* ignore */
   }
