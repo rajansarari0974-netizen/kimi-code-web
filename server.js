@@ -19,6 +19,7 @@ const http = require("http");
 const util = require("util");
 const execAsync = util.promisify(exec);
 const httpProxy = require("http-proxy");
+const crypto = require("crypto");
 
 const PORT = parseInt(process.env.PORT) || 10000;
 const KIMI_PORT = PORT + 1;            // kimi web internal port
@@ -672,6 +673,29 @@ async function main() {
     },
     shell: kimiBin === "npx",
   });
+
+  // ── Seed Hermes gateway config (API server needs API_SERVER_KEY + aiohttp) ──
+  try {
+    const hermesHome = path.join(os.homedir(), ".hermes");
+    fs.mkdirSync(hermesHome, { recursive: true });
+    const apiKey = crypto.randomBytes(32).toString("hex");
+    const configYaml = [
+      "platforms:",
+      "  api_server:",
+      "    enabled: true",
+      "    extra:",
+      "      host: 127.0.0.1",
+      "      port: 8642",
+      "      key: " + apiKey,
+      "",
+    ].join("\n");
+    // Always write both with the same key so they can never mismatch
+    fs.writeFileSync(path.join(hermesHome, "config.yaml"), configYaml);
+    fs.writeFileSync(path.join(hermesHome, ".env"), "API_SERVER_KEY=" + apiKey + "\n");
+    console.error("[main] Seeded Hermes gateway config in " + hermesHome);
+  } catch (e) {
+    console.error("[main] Hermes config seed failed: " + e.message);
+  }
 
   // Start Kimi Claw (hermes-web-ui) on HERMES_PORT — non-fatal if missing
   let hermesProc = null;
