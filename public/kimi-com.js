@@ -12,9 +12,10 @@
 
    Top bar: brand + hamburger menu button. All entries (Kimi Code, Kimi Work,
    Kimi Claw, Get App, About Us, Get Help) live inside the menu dropdown.
-   Kimi Work / Kimi Claw open in a new tab (kimi.com serves a browser-only
-   CSP that refuses to be framed, so an in-app iframe would be blank; in the
-   APK the WebView loads them in the same window instead). */
+   Kimi Work opens in a new tab (kimi.com serves a browser-only CSP that
+   refuses to be framed, so an in-app iframe would be blank; in the APK the
+   WebView loads it in the same window instead). Kimi Claw is served in-app
+   at /claw on this same service (Hermes agent backend). */
 (function () {
   "use strict";
 
@@ -38,7 +39,7 @@
   var MENU_ITEMS = [
     { label: "Kimi Code", action: "local", href: "/" },
     { label: "Kimi Work", action: "external", href: "https://www.kimi.com" },
-    { label: "Kimi Claw", action: "external", href: "https://www.kimi.com/claw" },
+    { label: "Kimi Claw", action: "local", href: "/claw" },
     { divider: true },
     { label: "Get App", action: "external", href: "https://www.kimi.com/download" },
     { label: "About Us", action: "external", href: "https://www.kimi.com/about" },
@@ -58,8 +59,8 @@
     menu.classList.toggle("kc-open", open);
   }
 
-  /* Full-screen in-app embed is not used: kimi.com refuses to be framed
-     (browser-only CSP), so Kimi Work / Kimi Claw are plain external links. */
+  /* Kimi Work is a plain external link (kimi.com refuses to be framed).
+     Kimi Claw is in-app: the /claw proxy on this same service. */
 
   function ensureTopbar() {
     if (qs(".kc-topbar")) return;
