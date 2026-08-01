@@ -597,8 +597,89 @@ proxy.on("error", (err, req, resOrSocket) => {
   }
 });
 
+// ── /_diag debug endpoint (temporary, for gateway diagnosis) ──────
+function httpGetHealth(url, timeoutMs) {
+  return new Promise((resolve) => {
+    const req = http.get(url, { timeout: timeoutMs }, (res) => {
+      let body = "";
+      res.on("data", (d) => { body += d; });
+      res.on("end", () => resolve({ status: res.statusCode, body: body.slice(0, 300) }));
+    });
+    req.on("error", (e) => resolve({ status: 0, body: "ERR " + e.message }));
+    req.on("timeout", () => { req.destroy(); resolve({ status: 0, body: "TIMEOUT" }); });
+  });
+}
+
+function execDiag(cmd, timeoutMs) {
+  return new Promise((resolve) => {
+    exec(cmd, { timeout: timeoutMs, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
+      const out = (stdout || "") + (stderr ? "\n[stderr] " + stderr : "");
+      resolve((err ? "[exit " + err.code + "] " : "") + out.slice(0, 3000));
+    });
+  });
+}
+
+function maskKey(s) {
+  if (typeof s !== "string") return s;
+  return s.replace(/(key[:=\s]+)([A-Za-z0-9]{6})[A-Za-z0-9]+([A-Za-z0-9]{4})/g, "$1$2***$3");
+}
+
+async function handleDiag(req, res) {
+  const out = { ts: new Date().toISOString(), pid: process.pid };
+  const hm = path.join(os.homedir(), ".hermes");
+  out.seedRan = !!global.__seedRan;
+  out.gmPatched = !!global.__gmPatched;
+  try {
+    out.configYaml = maskKey(fs.readFileSync(path.join(hm, "config.yaml"), "utf-8"));
+  } catch (e) { out.configYaml = "ERR " + e.message; }
+  try {
+    out.env = maskKey(fs.readFileSync(path.join(hm, ".env"), "utf-8"));
+  } catch (e) { out.env = "ERR " + e.message; }
+  const gmFile = path.join(__dirname, "node_modules/hermes-web-ui/dist/server/services/hermes/gateway-manager.js");
+  try {
+    const gm = fs.readFileSync(gmFile, "utf-8");
+    out.gmHasFix = gm.includes("KIMI_KEY_FIX");
+  } catch (e) { out.gmHasFix = "ERR " + e.message; }
+  out.aiohttp = await execDiag("/opt/hermes/bin/python -c \"import aiohttp; print('aiohttp', aiohttp.__version__)\"", 15000);
+  out.hermesVersion = await execDiag("/opt/hermes/bin/hermes --version", 15000);
+
+  // Direct gateway start test: spawn with same env as web-ui, wait 6s,
+  // probe /health, then leave running if OK (gateway live = /claw works).
+  const testOut = { log: "", health: null, leftRunning: false };
+  try {
+    const child = spawn(HERMES_BIN, ["gateway", "run", "--replace"], {
+      env: { ...process.env, HERMES_HOME: hm },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let log = "";
+    child.stdout.on("data", (d) => { log += d; if (log.length > 4000) log = log.slice(-4000); });
+    child.stderr.on("data", (d) => { log += d; if (log.length > 4000) log = log.slice(-4000); });
+    await new Promise((r) => setTimeout(r, 6000));
+    testOut.health = await httpGetHealth("http://127.0.0.1:8642/health", 2500);
+    testOut.log = log.slice(0, 4000);
+    if (testOut.health && testOut.health.status === 200) {
+      child.unref();
+      testOut.leftRunning = true;
+      console.error("[diag] Gateway test OK — left gateway running");
+    } else {
+      child.kill("SIGKILL");
+      testOut.leftRunning = false;
+    }
+  } catch (e) {
+    testOut.log = "TEST ERR " + e.message;
+  }
+  out.gatewayTest = testOut;
+
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(out, null, 2));
+}
+
 function startProxy() {
   const server = http.createServer((req, res) => {
+    if (req.url === "/_diag") {
+      handleDiag(req, res);
+      return;
+    }
     const target = routeTarget(req.url);
     if (target === HERMES_PORT) {
       req.url = stripClawPrefix(req.url);
@@ -692,6 +773,7 @@ async function main() {
     // Always write both with the same key so they can never mismatch
     fs.writeFileSync(path.join(hermesHome, "config.yaml"), configYaml);
     fs.writeFileSync(path.join(hermesHome, ".env"), "API_SERVER_KEY=" + apiKey + "\n");
+    global.__seedRan = true;
     console.error("[main] Seeded Hermes gateway config in " + hermesHome);
 
     // Patch hermes-web-ui writeProfilePort: it hard-codes key:'' and wipes our
@@ -719,6 +801,7 @@ cfg.platforms.api_server.key = (() => {
 /*KIMI_KEY_FIX*/`;
         gm = gm.replace("cfg.platforms.api_server.key = '';", fix);
         fs.writeFileSync(gmFile, gm);
+        global.__gmPatched = true;
         console.error("[main] Patched hermes-web-ui writeProfilePort (key wipe fix)");
       }
     }
