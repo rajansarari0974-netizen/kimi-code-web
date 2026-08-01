@@ -659,6 +659,71 @@ function tryWebuiAsset(req, res) {
   });
 }
 
+// Kimi Claw auto-login (runtime): the webui's served index.html is built in
+// memory with a base-path transform, so writing the key into the dist file
+// (injectClawKey below) doesn't stick. Instead we intercept page loads to the
+// claw backend and inject the key script into the HTML response on the fly.
+// The UI gate accepts any non-empty key and the API doesn't validate it.
+function clawKeyScript() {
+  let key = "";
+  try {
+    const envTxt = fs.readFileSync(path.join(os.homedir(), ".hermes", ".env"), "utf-8");
+    const m = envTxt.match(/^API_SERVER_KEY\s*=\s*"?([^"\n]+)"?/m);
+    if (m && m[1]) key = m[1].trim();
+  } catch (e) { /* fall through to static key */ }
+  if (!key) key = "kimi-claw-ui";
+  return (
+    '<script id="KIMI_CLAW_KEY_INJECTED">try{localStorage.setItem("hermes_api_key","' +
+    key + '");localStorage.setItem("hermes_server_url","")}catch(e){}</script>'
+  );
+}
+
+// Manually fetch a claw page from the webui and inject the auto-login key
+// script before </head>. Returns true if a response was sent, false to fall
+// through to the normal proxy (upstream down / non-page responses).
+function serveClawPage(req, res, upPath) {
+  return new Promise((resolve) => {
+    const headers = Object.assign({}, req.headers, {
+      host: "127.0.0.1:" + HERMES_PORT,
+      "accept-encoding": "identity", // keep the body plain so we can inject
+    });
+    delete headers["content-length"];
+    const upReq = http.request(
+      { host: "127.0.0.1", port: HERMES_PORT, path: upPath, method: req.method, headers },
+      (upRes) => {
+        const ct = String(upRes.headers["content-type"] || "").toLowerCase();
+        if (!ct.includes("text/html")) {
+          // Not a page (redirect, etc.) — pass through untouched
+          res.writeHead(upRes.statusCode, upRes.headers);
+          upRes.pipe(res);
+          resolve(true);
+          return;
+        }
+        const chunks = [];
+        upRes.on("data", (d) => chunks.push(d));
+        upRes.on("end", () => {
+          let html = Buffer.concat(chunks).toString("utf-8");
+          const script = clawKeyScript();
+          if (html.includes("KIMI_CLAW_KEY_INJECTED")) {
+            html = html.replace(/<script id="KIMI_CLAW_KEY_INJECTED">[\s\S]*?<\/script>/, script);
+          } else {
+            html = html.replace("</head>", script + "</head>");
+          }
+          const headers2 = Object.assign({}, upRes.headers);
+          delete headers2["content-length"];
+          headers2["content-length"] = Buffer.byteLength(html);
+          res.writeHead(upRes.statusCode, headers2);
+          res.end(html);
+          resolve(true);
+        });
+        upRes.on("error", () => resolve(false));
+      }
+    );
+    upReq.on("error", () => resolve(false));
+    upReq.end();
+  });
+}
+
 // Kimi Claw auto-login: the webui SPA gates the UI behind a login screen
 // until localStorage.hermes_api_key is set, but the gateway API key is
 // regenerated at every boot. Inject the current API_SERVER_KEY into the
@@ -827,6 +892,17 @@ function startProxy() {
     }
     const target = routeTarget(req.url);
     if (target === HERMES_PORT) {
+      // Page loads to the claw webui: inject auto-login key so the login
+      // screen never shows (browser page loads carry Accept: text/html;
+      // api/asset/ws requests don't). Non-page responses pass through.
+      const acceptsHtml = /text\/html/.test(String(req.headers.accept || ""));
+      if (req.method === "GET" && acceptsHtml && !req.url.startsWith("/claw/api/")) {
+        try {
+          if (await serveClawPage(req, res, stripClawPrefix(req.url))) return;
+        } catch (e) {
+          console.error("[proxy] claw page inject error: " + e.message);
+        }
+      }
       req.url = stripClawPrefix(req.url);
     }
     proxy.web(req, res, { target: "http://127.0.0.1:" + target });
