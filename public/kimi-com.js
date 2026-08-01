@@ -12,9 +12,9 @@
 
    Top bar: brand + hamburger menu button. All entries (Kimi Code, Kimi Work,
    Kimi Claw, Get App, About Us, Get Help) live inside the menu dropdown.
-   Kimi Work / Kimi Claw open in-app in a full-screen iframe so the user
-   stays on this service; a "Naya tab me kholo" link is always available
-   as a fallback in case the remote site refuses to be framed. */
+   Kimi Work / Kimi Claw open in a new tab (kimi.com serves a browser-only
+   CSP that refuses to be framed, so an in-app iframe would be blank; in the
+   APK the WebView loads them in the same window instead). */
 (function () {
   "use strict";
 
@@ -37,8 +37,8 @@
 
   var MENU_ITEMS = [
     { label: "Kimi Code", action: "local", href: "/" },
-    { label: "Kimi Work", action: "embed", href: "https://www.kimi.com" },
-    { label: "Kimi Claw", action: "embed", href: "https://www.kimi.com/claw" },
+    { label: "Kimi Work", action: "external", href: "https://www.kimi.com" },
+    { label: "Kimi Claw", action: "external", href: "https://www.kimi.com/claw" },
     { divider: true },
     { label: "Get App", action: "external", href: "https://www.kimi.com/download" },
     { label: "About Us", action: "external", href: "https://www.kimi.com/about" },
@@ -58,39 +58,8 @@
     menu.classList.toggle("kc-open", open);
   }
 
-  /* Full-screen in-app embed (Kimi Work / Kimi Claw) */
-  function openEmbed(title, url) {
-    var ov = qs(".kc-embed");
-    if (!ov) {
-      ov = document.createElement("div");
-      ov.className = "kc-embed";
-      ov.innerHTML =
-        '<div class="kc-embed-head">' +
-        '<span class="kc-embed-title"></span>' +
-        '<div class="kc-embed-actions">' +
-        '<a class="kc-embed-ext" target="_blank" rel="noopener">Naya tab me kholo</a>' +
-        '<button class="kc-embed-close" aria-label="Close">&times;</button>' +
-        "</div></div>" +
-        '<iframe class="kc-embed-frame" allow="fullscreen; autoplay; clipboard-write" ' +
-        'sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>';
-      ov.querySelector(".kc-embed-close").addEventListener("click", closeEmbed);
-      ov.addEventListener("click", function (e) {
-        if (e.target === ov) closeEmbed();
-      });
-      document.body.appendChild(ov);
-    }
-    ov.querySelector(".kc-embed-title").textContent = title;
-    ov.querySelector(".kc-embed-ext").href = url;
-    ov.querySelector(".kc-embed-frame").src = url;
-    ov.classList.add("kc-open");
-  }
-
-  function closeEmbed() {
-    var ov = qs(".kc-embed");
-    if (!ov) return;
-    ov.classList.remove("kc-open");
-    ov.querySelector(".kc-embed-frame").src = "about:blank";
-  }
+  /* Full-screen in-app embed is not used: kimi.com refuses to be framed
+     (browser-only CSP), so Kimi Work / Kimi Claw are plain external links. */
 
   function ensureTopbar() {
     if (qs(".kc-topbar")) return;
@@ -124,13 +93,7 @@
       var a = document.createElement("a");
       a.textContent = item.label;
       a.href = item.href || "#";
-      if (item.action === "embed") {
-        a.addEventListener("click", function (e) {
-          e.preventDefault();
-          toggleMenu(false);
-          openEmbed(item.label, item.href);
-        });
-      } else if (item.action === "local") {
+      if (item.action === "local") {
         a.addEventListener("click", function (e) {
           e.preventDefault();
           toggleMenu(false);
