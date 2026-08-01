@@ -15,6 +15,9 @@ RUN npx --yes @moonshot-ai/kimi-code --version 2>/dev/null || true
 # Copy app source
 COPY . .
 
+# Apply kimi.com-style UI patch to the kimi web dist
+RUN node scripts/patch-ui.js
+
 # Allow all Render hosts
 ENV KIMI_CODE_ALLOWED_HOSTS=.onrender.com,localhost,127.0.0.1
 
