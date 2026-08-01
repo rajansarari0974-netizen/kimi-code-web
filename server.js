@@ -1,25 +1,30 @@
 #!/usr/bin/env node
 /**
- * Kimi Code Render Server v3.1 — Real-time PostgreSQL Session Store
- * Runs `kimi web` directly on Render's PORT for proper WebSocket support.
- * Sessions are saved to PostgreSQL in REAL-TIME (within ~2s of any change)
- * via file watcher, plus periodic backup every 5 min as safety net.
- * — so they NEVER get lost on deploy/restart.
+ * Kimi Code Render Server v4.0 — Kimi Code + Kimi Claw on ONE service
+ * Runs a single HTTP proxy on Render's PORT:
+ *   - everything except /claw*  → kimi web  (internal KIMI_PORT)
+ *   - /claw*                     → hermes-web-ui (Kimi Claw UI, internal HERMES_PORT)
+ * WebSocket upgrades are proxied too (kimi chat WS + Kimi Claw terminal).
  *
- * v3.1: Real-time file watcher on session_index.jsonl + sessions dir.
- *       Sessions backup to PG within ~2 seconds of any change (debounced).
- *       5-min periodic backup as safety net.
- *       No proxy — kimi web runs directly on PORT so WebSocket works natively.
+ * v3.1 heritage: Sessions saved to PostgreSQL in REAL-TIME (within ~2s of any
+ * change) via file watcher, plus periodic backup every 5 min as safety net —
+ * so they NEVER get lost on deploy/restart. Pentaract remains the fallback.
  */
 const { spawn, exec } = require("child_process");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
 const https = require("https");
+const http = require("http");
 const util = require("util");
 const execAsync = util.promisify(exec);
+const httpProxy = require("http-proxy");
 
 const PORT = parseInt(process.env.PORT) || 10000;
+const KIMI_PORT = PORT + 1;            // kimi web internal port
+const HERMES_PORT = 8648;              // hermes-web-ui (Kimi Claw UI) internal port
+const HERMES_UPSTREAM = "http://127.0.0.1:8642"; // hermes agent gateway
+const HERMES_BIN = process.env.HERMES_BIN || "/opt/hermes/bin/hermes";
 
 // ── PostgreSQL config ─────────────────────────────────────────────
 const DATABASE_URL = process.env.DATABASE_URL || "";
@@ -558,10 +563,68 @@ function startSessionWatcher() {
   }
 }
 
+// ── HTTP proxy: /claw* → hermes-web-ui, everything else → kimi web ──
+
+function routeTarget(reqUrl) {
+  return reqUrl.startsWith("/claw") ? HERMES_PORT : KIMI_PORT;
+}
+
+// Strip the /claw prefix so the backend sees its native paths.
+//  /claw        → "/"
+//  /claw/       → "/"
+//  /claw/api/x  → "/api/x"
+function stripClawPrefix(reqUrl) {
+  let out = reqUrl.replace(/^\/claw(?=\/|$)/, "");
+  if (out === "") out = "/";
+  return out;
+}
+
+const proxy = httpProxy.createProxyServer({
+  changeOrigin: false,
+  xfwd: false,
+});
+
+proxy.on("error", (err, req, resOrSocket) => {
+  console.error("[proxy] " + (req && req.url) + " → " + err.message);
+  if (resOrSocket && resOrSocket.writeHead) {
+    try {
+      if (!resOrSocket.headersSent) resOrSocket.writeHead(502, { "Content-Type": "text/plain" });
+      resOrSocket.end("Bad Gateway: " + err.message);
+    } catch (e) { /* ignore */ }
+  } else if (resOrSocket && resOrSocket.destroy) {
+    try { resOrSocket.destroy(); } catch (e) { /* ignore */ }
+  }
+});
+
+function startProxy() {
+  const server = http.createServer((req, res) => {
+    const target = routeTarget(req.url);
+    if (target === HERMES_PORT) {
+      req.url = stripClawPrefix(req.url);
+    }
+    proxy.web(req, res, { target: "http://127.0.0.1:" + target });
+  });
+
+  // WebSocket upgrade: kimi chat WS + Kimi Claw terminal WS
+  server.on("upgrade", (req, socket, head) => {
+    const target = routeTarget(req.url);
+    if (target === HERMES_PORT) {
+      req.url = stripClawPrefix(req.url);
+    }
+    proxy.ws(req, socket, head, { target: "http://127.0.0.1:" + target });
+  });
+
+  server.listen(PORT, "0.0.0.0", () => {
+    console.error("[proxy] Listening on 0.0.0.0:" + PORT +
+      " (/claw* → :" + HERMES_PORT + " Kimi Claw, * → :" + KIMI_PORT + " kimi web)");
+  });
+  return server;
+}
+
 // ── Main ─────────────────────────────────────────────────────────
 
 async function main() {
-  console.error("=== Kimi Code Server v3.1 (Real-time PG Session Store) ===");
+  console.error("=== Kimi Code Server v4.0 (Kimi Code + Kimi Claw, one service) ===");
   console.error("[main] PORT=" + PORT + " KIMI_HOME=" + KIMI_HOME);
 
   // Init PostgreSQL
@@ -590,21 +653,51 @@ async function main() {
     try { return fs.existsSync(p); } catch (e) { return false; }
   }) || "npx";
 
-  // Run kimi web DIRECTLY on PORT (no proxy - WebSocket works natively)
+  // Run kimi web on the INTERNAL port (the proxy on PORT fronts it)
   const args = kimiBin === "npx"
     ? ["--yes", "@moonshot-ai/kimi-code", "web", "--no-open",
-       "--port", String(PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"]
+       "--port", String(KIMI_PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"]
     : ["web", "--no-open",
-       "--port", String(PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"];
+       "--port", String(KIMI_PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"];
 
-  console.error("[main] Starting Kimi web directly on 0.0.0.0:" + PORT);
+  console.error("[main] Starting Kimi web on 0.0.0.0:" + KIMI_PORT);
   console.error("[main] Cmd: " + kimiBin + " " + args.join(" "));
 
   const kimiProc = spawn(kimiBin, args, {
     stdio: ["ignore", "inherit", "inherit"],
-    env: { ...process.env, PORT: String(PORT) },
+    env: {
+      ...process.env,
+      PORT: String(KIMI_PORT),
+      NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=256",
+    },
     shell: kimiBin === "npx",
   });
+
+  // Start Kimi Claw (hermes-web-ui) on HERMES_PORT — non-fatal if missing
+  let hermesProc = null;
+  const hermesEntry = path.join(__dirname, "node_modules/hermes-web-ui/dist/server/index.js");
+  if (fs.existsSync(hermesEntry)) {
+    console.error("[main] Starting Kimi Claw (hermes-web-ui) on 0.0.0.0:" + HERMES_PORT);
+    hermesProc = spawn(process.execPath, [hermesEntry], {
+      stdio: ["ignore", "inherit", "inherit"],
+      env: {
+        ...process.env,
+        PORT: String(HERMES_PORT),
+        UPSTREAM: HERMES_UPSTREAM,
+        AUTH_DISABLED: "1",
+        HERMES_BIN: HERMES_BIN,
+        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=128",
+      },
+    });
+    hermesProc.on("exit", (code, sig) => {
+      console.error("[main] Kimi Claw exited (code=" + code + ", signal=" + sig + ")");
+    });
+  } else {
+    console.error("[main] hermes-web-ui not installed — Kimi Claw disabled (kimi web still works)");
+  }
+
+  // HTTP proxy on PORT
+  const proxyServer = startProxy();
 
   // Start real-time session watcher (saves to PG within ~2s of any change)
   // Wait a few seconds after kimi starts so the session files/index exist
@@ -622,8 +715,9 @@ async function main() {
     clearInterval(backupInterval);
     if (backupTimeout) clearTimeout(backupTimeout);
     await backupSessions();
-    console.error("[shutdown] Backup done, forwarding " + signal + " to kimi...");
-    kimiProc.kill(signal);
+    console.error("[shutdown] Backup done, forwarding " + signal + " to children...");
+    if (kimiProc) kimiProc.kill(signal);
+    if (hermesProc) hermesProc.kill(signal);
   };
 
   process.on("SIGTERM", () => shutdown("SIGTERM"));
@@ -639,6 +733,10 @@ async function main() {
     }).catch(() => {
       process.exit(code || 0);
     });
+  });
+
+  proxyServer.on("close", () => {
+    console.error("[proxy] Proxy closed");
   });
 }
 
