@@ -640,7 +640,11 @@ function tryWebuiAsset(req, res) {
         headers: Object.assign({}, req.headers, { host: "127.0.0.1:" + HERMES_PORT }),
       },
       (upRes) => {
-        if (upRes.statusCode === 404) {
+        // hermes-web-ui SPA-fallbacks unknown paths to index.html (200
+        // text/html). Treat that as a miss so kimi web's own /assets/* keep
+        // working; only serve real files (js/css/svg/ico/...).
+        const ct = String(upRes.headers["content-type"] || "").toLowerCase();
+        if (upRes.statusCode === 404 || ct.includes("text/html")) {
           upRes.resume();
           resolve(false);
           return;
