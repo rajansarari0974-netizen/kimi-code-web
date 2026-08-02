@@ -1289,7 +1289,7 @@ cfg.platforms.api_server.key = (() => {
         UPSTREAM: HERMES_UPSTREAM,
         AUTH_DISABLED: "1",
         HERMES_BIN: HERMES_BIN,
-        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=128",
+        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=96",
       },
     });
     hermesProc.on("exit", (code, sig) => {
@@ -1378,7 +1378,7 @@ cfg.platforms.api_server.key = (() => {
     } catch (e) {
       console.error("[watchdog] error: " + e.message);
     }
-  }, 30 * 1000);
+  }, 10 * 1000);
 
   // Backup on exit
   const shutdown = async (signal) => {
