@@ -983,8 +983,8 @@ async function main() {
     const apiKey = crypto.randomBytes(32).toString("hex");
     const configYaml = [
       "model:",
-      "  default: zai/glm-5.2",
-      "  provider: zai",
+      "  default: nvidia/nemotron-3-super-120b-a12b:free",
+      "  provider: nvidia",
       "platforms:",
       "  api_server:",
       "    enabled: true",
