@@ -45,6 +45,7 @@ const KIMI_HOME = process.env.KIMI_CODE_HOME || path.join(os.homedir(), ".kimi-c
 process.env.KIMI_CODE_HOME = KIMI_HOME;
 fs.mkdirSync(KIMI_HOME, { recursive: true });
 const SESSIONS_DIR = path.join(KIMI_HOME, "sessions");
+const HERMES_HOME = path.join(os.homedir(), ".hermes");
 
 // ── Config — read template from repo, substitute env vars ──
 const configPath = path.join(KIMI_HOME, "config.toml");
@@ -132,6 +133,15 @@ async function initPostgres() {
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_kimi_sessions_updated ON kimi_sessions(updated_at)
     `).catch(() => {});
+    // Hermes (Kimi Claw) state backup table — whole-home blob + stable API key
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS hermes_state (
+        row_id TEXT PRIMARY KEY,
+        data BYTEA NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
     client.release();
     console.error("[pg] PostgreSQL connected & sessions table ready");
     return true;
@@ -260,6 +270,139 @@ async function restoreSessionsFromPostgres() {
     console.error("[pg] Failed to restore from PostgreSQL: " + e.message);
     return false;
   }
+}
+
+// ── Hermes (Kimi Claw) state persistence ─────────────────────────
+// The hermes agent keeps its sessions/memories/kanban/pairing state under
+// ~/.hermes, which is EPHEMERAL on Render free tier — it gets wiped on every
+// deploy/restart/sleep-wake, which is why Claw sessions kept vanishing and the
+// UI showed "disconnected" after a restart. Mirror the whole home (minus
+// transient/runtime files) to PostgreSQL the same way kimi sessions are backed
+// up, and restore it at boot BEFORE the gateway starts. Kimi session handling
+// is left completely untouched.
+
+const HERMES_TAR_EXCLUDES = [
+  "--exclude=logs", "--exclude=*.log",
+  "--exclude=gateway.lock", "--exclude=gateway.pid",
+  "--exclude=gateway_state.json", "--exclude=gateway-starts.log",
+  "--exclude=.update_check",
+  "--exclude=audio_cache", "--exclude=image_cache",
+];
+
+function hermesTarArgs() {
+  // Start from the home dir so extraction puts .hermes/ back at the right place
+  return `tar czf "${hermesTmpTar()}" -C "${os.homedir()}" ${HERMES_TAR_EXCLUDES.join(" ")} .hermes 2>&1`;
+}
+
+function hermesTmpTar() {
+  return "/tmp/pg-hermes.tar.gz";
+}
+
+async function saveHermesToPostgres() {
+  if (!pgPool) return;
+  try {
+    if (!fs.existsSync(HERMES_HOME)) return;
+    const tmpFile = hermesTmpTar();
+    await execAsync(hermesTarArgs(), { timeout: 30000 }).catch(e => {
+      console.error("[pg-hermes] tar failed: " + e.message);
+      return { stderr: e.message };
+    });
+    if (!fs.existsSync(tmpFile) || fs.statSync(tmpFile).size === 0) return;
+    const data = fs.readFileSync(tmpFile);
+    const client = await pgPool.connect();
+    try {
+      await client.query(
+        `INSERT INTO hermes_state (row_id, data, updated_at)
+         VALUES ('hermes_backup', $1, NOW())
+         ON CONFLICT (row_id) DO UPDATE SET data = $1, updated_at = NOW()`,
+        [data]
+      );
+      console.error("[pg-hermes] Saved hermes state to PostgreSQL (" +
+        (data.length / 1024).toFixed(0) + " KB)");
+    } finally {
+      client.release();
+      try { fs.unlinkSync(tmpFile); } catch (_) {}
+    }
+  } catch (e) {
+    console.error("[pg-hermes] Failed to save hermes state: " + e.message);
+  }
+}
+
+async function restoreHermesFromPostgres() {
+  if (!pgPool) return false;
+  try {
+    const client = await pgPool.connect();
+    try {
+      const r = await client.query(
+        "SELECT data FROM hermes_state WHERE row_id = 'hermes_backup'"
+      );
+      if (!r.rows.length) {
+        console.error("[pg-hermes] No hermes backup in PostgreSQL, starting fresh");
+        return false;
+      }
+      const data = r.rows[0].data;
+      const tmpFile = "/tmp/pg-hermes-restore.tar.gz";
+      fs.writeFileSync(tmpFile, data);
+      fs.mkdirSync(HERMES_HOME, { recursive: true });
+      await execAsync(`tar xzf "${tmpFile}" -C "${os.homedir()}" 2>&1`, { timeout: 30000 });
+      console.error("[pg-hermes] Restored hermes state from PostgreSQL (" +
+        (data.length / 1024).toFixed(0) + " KB)");
+      return true;
+    } finally {
+      client.release();
+      try { fs.unlinkSync(tmpFile); } catch (_) {}
+    }
+  } catch (e) {
+    console.error("[pg-hermes] Restore failed: " + e.message);
+    return false;
+  }
+}
+
+// Stable API_SERVER_KEY across restarts: the Claw UI stores the key in
+// localStorage, so a regenerated key at every boot makes every old tab/WS
+// connection stale -> "disconnected" after deploy/sleep. Persist the key in
+// PostgreSQL and reuse it forever.
+async function getStableApiKey() {
+  let key = null;
+  if (pgPool) {
+    try {
+      const client = await pgPool.connect();
+      try {
+        const r = await client.query(
+          "SELECT data FROM hermes_state WHERE row_id = 'api_key'"
+        );
+        if (r.rows.length) key = r.rows[0].data.toString("utf-8").trim();
+      } finally {
+        client.release();
+      }
+    } catch (e) {
+      console.error("[pg-hermes] getStableApiKey read failed: " + e.message);
+    }
+  }
+  if (!key) {
+    key = crypto.randomBytes(32).toString("hex");
+    if (pgPool) {
+      try {
+        const client = await pgPool.connect();
+        try {
+          await client.query(
+            `INSERT INTO hermes_state (row_id, data, updated_at)
+             VALUES ('api_key', $1, NOW())
+             ON CONFLICT (row_id) DO UPDATE SET data = $1, updated_at = NOW()`,
+            [Buffer.from(key, "utf-8")]
+          );
+          console.error("[pg-hermes] Generated + persisted stable API key");
+        } finally {
+          client.release();
+        }
+      } catch (e) {
+        console.error("[pg-hermes] API key persist failed: " + e.message);
+      }
+    } else {
+      console.error("[pg-hermes] No PG — using ephemeral API key this boot");
+    }
+  }
+  return key;
 }
 
 // ── Pentaract API helpers (fallback) ─────────────────────────────
@@ -933,6 +1076,11 @@ async function main() {
   // Init PostgreSQL
   await initPostgres();
 
+  // Restore Hermes (Claw) state from PostgreSQL BEFORE the gateway starts —
+  // the gateway is spawned later in this function, so restoring here is safe
+  // and makes Claw sessions/memories survive deploys and cold starts.
+  await restoreHermesFromPostgres();
+
   // Restore sessions (PostgreSQL primary, Pentaract fallback)
   await restoreSessions();
 
@@ -945,6 +1093,9 @@ async function main() {
   // row so future restores find it right away.
   saveSessionsToPostgres().catch(e =>
     console.error("[main] First-save error: " + e.message)
+  );
+  saveHermesToPostgres().catch(e =>
+    console.error("[main] First hermes-save error: " + e.message)
   );
 
   // Find kimi binary
@@ -978,9 +1129,10 @@ async function main() {
 
   // ── Seed Hermes gateway config (API server needs API_SERVER_KEY + aiohttp) ──
   try {
-    const hermesHome = path.join(os.homedir(), ".hermes");
-    fs.mkdirSync(hermesHome, { recursive: true });
-    const apiKey = crypto.randomBytes(32).toString("hex");
+    fs.mkdirSync(HERMES_HOME, { recursive: true });
+    // Stable key: reuse the PostgreSQL-persisted key so the Claw UI's stored
+    // localStorage key stays valid across restarts (fixes "disconnected").
+    const apiKey = await getStableApiKey();
     const configYaml = [
       "model:",
       "  default: nvidia/nemotron-3-super-120b-a12b",
@@ -1008,10 +1160,10 @@ async function main() {
       "",
     ].join("\n");
     // Always write both with the same key so they can never mismatch
-    fs.writeFileSync(path.join(hermesHome, "config.yaml"), configYaml);
-    fs.writeFileSync(path.join(hermesHome, ".env"), "API_SERVER_KEY=" + apiKey + "\n");
+    fs.writeFileSync(path.join(HERMES_HOME, "config.yaml"), configYaml);
+    fs.writeFileSync(path.join(HERMES_HOME, ".env"), "API_SERVER_KEY=" + apiKey + "\n");
     global.__seedRan = true;
-    console.error("[main] Seeded Hermes gateway config in " + hermesHome);
+    console.error("[main] Seeded Hermes gateway config in " + HERMES_HOME);
 
     // Patch hermes-web-ui writeProfilePort: it hard-codes key:'' and wipes our
     // API_SERVER_KEY on every start, which makes the gateway refuse to launch.
@@ -1110,14 +1262,38 @@ cfg.platforms.api_server.key = (() => {
   const backupInterval = setInterval(() => {
     console.error("[backup] Periodic backup...");
     backupSessions().catch(e => console.error("[backup] Backup error: " + e.message));
+    saveHermesToPostgres().catch(e => console.error("[backup] Hermes backup error: " + e.message));
   }, 5 * 60 * 1000);
+
+  // Hermes state changes continuously while Claw is used (sessions, memories,
+  // kanban). Save it every 60s too, so a crash loses at most a minute of state
+  // instead of the last 5-min cycle or a wiped filesystem.
+  const hermesInterval = setInterval(() => {
+    saveHermesToPostgres().catch(e => console.error("[hermes-backup] Error: " + e.message));
+  }, 60 * 1000);
+
+  // Keep the free instance awake: Render spins it down after ~15 min without
+  // inbound traffic, which drops the Claw SSE stream (UI shows "disconnected"
+  // until a page reload). Ping our own public URL — the request goes out
+  // through the network and back in through Render's router, counting as real
+  // inbound traffic — every 10 min so the idle timer never trips.
+  const keepaliveInterval = setInterval(() => {
+    const selfUrl = process.env.RENDER_EXTERNAL_URL;
+    if (!selfUrl) return;
+    fetch(selfUrl + "/claw/")
+      .then(r => console.error("[keepalive] ping " + r.status))
+      .catch(e => console.error("[keepalive] error: " + e.message));
+  }, 10 * 60 * 1000);
 
   // Backup on exit
   const shutdown = async (signal) => {
     console.error("[shutdown] " + signal + " received, backing up sessions...");
     clearInterval(backupInterval);
+    clearInterval(hermesInterval);
+    clearInterval(keepaliveInterval);
     if (backupTimeout) clearTimeout(backupTimeout);
     await backupSessions();
+    await saveHermesToPostgres();
     console.error("[shutdown] Backup done, forwarding " + signal + " to children...");
     if (kimiProc) kimiProc.kill(signal);
     if (hermesProc) hermesProc.kill(signal);
@@ -1131,6 +1307,8 @@ cfg.platforms.api_server.key = (() => {
       + "saving sessions one last time...");
     // Save sessions immediately on exit
     backupSessions().then(() => {
+      return saveHermesToPostgres();
+    }).then(() => {
       console.error("[main] Final backup done, exiting.");
       process.exit(code || 0);
     }).catch(() => {
