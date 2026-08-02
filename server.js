@@ -1160,7 +1160,7 @@ async function main() {
     env: {
       ...process.env,
       PORT: String(KIMI_PORT),
-      NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=256",
+      NODE_OPTIONS: "--max-old-space-size=160",
     },
     shell: kimiBin === "npx",
   });
@@ -1276,7 +1276,7 @@ cfg.platforms.api_server.key = (() => {
         UPSTREAM: HERMES_UPSTREAM,
         AUTH_DISABLED: "1",
         HERMES_BIN: HERMES_BIN,
-        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=128",
+        NODE_OPTIONS: "--max-old-space-size=64",
       },
     });
     hermesProc.on("exit", (code, sig) => {
@@ -1323,12 +1323,51 @@ cfg.platforms.api_server.key = (() => {
       .catch(e => console.error("[keepalive] error: " + e.message));
   }, 10 * 60 * 1000);
 
+  // Memory watchdog: Render free tier caps RAM at 512MiB. When the kernel OOM
+  // killer fires (SIGKILL) the whole instance is recycled with a FRESH
+  // filesystem — that was the root cause of Claw sessions disappearing and
+  // "disconnected" errors. Instead of dying to OOM, back everything up to
+  // Postgres and exit(0) so Render restarts us cleanly and the backup is
+  // restored on boot. Reads the real cgroup limit when available.
+  const watchdogInterval = setInterval(async () => {
+    try {
+      let current = null;
+      let limit = 512 * 1024 * 1024; // fallback: Render free = 512MiB
+      try {
+        const cgCurrent = fs.readFileSync("/sys/fs/cgroup/memory.current", "utf-8").trim();
+        if (cgCurrent) current = parseInt(cgCurrent, 10);
+        const cgMax = fs.readFileSync("/sys/fs/cgroup/memory.max", "utf-8").trim();
+        if (cgMax && cgMax !== "max") limit = parseInt(cgMax, 10);
+      } catch (e) {
+        // Not in a cgroup (local dev) — nothing to watch
+        return;
+      }
+      if (current === null) return;
+      const threshold = Math.floor(limit * 0.88);
+      if (current > threshold) {
+        console.error("[watchdog] memory at " + Math.round(current / 1024 / 1024) + "MB / "
+          + Math.round(limit / 1024 / 1024) + "MB (limit 88%) — backing up and restarting gracefully");
+        clearInterval(watchdogInterval);
+        clearInterval(backupInterval);
+        clearInterval(hermesInterval);
+        clearInterval(keepaliveInterval);
+        try { await backupSessions(); } catch (e) { console.error("[watchdog] backup error: " + e.message); }
+        try { await saveHermesToPostgres(); } catch (e) { console.error("[watchdog] hermes backup error: " + e.message); }
+        console.error("[watchdog] backup complete, exiting for clean restart");
+        process.exit(0);
+      }
+    } catch (e) {
+      console.error("[watchdog] error: " + e.message);
+    }
+  }, 30 * 1000);
+
   // Backup on exit
   const shutdown = async (signal) => {
     console.error("[shutdown] " + signal + " received, backing up sessions...");
     clearInterval(backupInterval);
     clearInterval(hermesInterval);
     clearInterval(keepaliveInterval);
+    clearInterval(watchdogInterval);
     if (backupTimeout) clearTimeout(backupTimeout);
     await backupSessions();
     await saveHermesToPostgres();
