@@ -982,6 +982,9 @@ async function main() {
     fs.mkdirSync(hermesHome, { recursive: true });
     const apiKey = crypto.randomBytes(32).toString("hex");
     const configYaml = [
+      "model:",
+      "  default: zai/glm-5.2",
+      "  provider: zai",
       "platforms:",
       "  api_server:",
       "    enabled: true",
@@ -1131,3 +1134,4 @@ main().catch((e) => {
   console.error("[main] Fatal error: " + e.message);
   process.exit(1);
 });
+
