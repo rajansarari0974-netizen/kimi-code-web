@@ -33,4 +33,4 @@ EXPOSE 10000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3   CMD curl -sf http://localhost:${PORT:-10000}/ || exit 1
 
 # Unified entrypoint (kimi + hermes proxy in one process)
-CMD ["node", "server.js"]
+CMD ["node", "--max-old-space-size=96", "server.js"]
