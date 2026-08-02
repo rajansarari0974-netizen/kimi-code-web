@@ -319,6 +319,7 @@ async function saveHermesToPostgres() {
       );
       console.error("[pg-hermes] Saved hermes state to PostgreSQL (" +
         (data.length / 1024).toFixed(0) + " KB)");
+      global.__hermesLastSave = new Date().toISOString();
     } finally {
       client.release();
       try { fs.unlinkSync(tmpFile); } catch (_) {}
@@ -347,6 +348,7 @@ async function restoreHermesFromPostgres() {
       await execAsync(`tar xzf "${tmpFile}" -C "${os.homedir()}" 2>&1`, { timeout: 30000 });
       console.error("[pg-hermes] Restored hermes state from PostgreSQL (" +
         (data.length / 1024).toFixed(0) + " KB)");
+      global.__hermesLastRestore = new Date().toISOString();
       return true;
     } finally {
       client.release();
@@ -968,6 +970,42 @@ async function handleDiag(req, res) {
   try {
     out.env = maskKey(fs.readFileSync(path.join(hm, ".env"), "utf-8"));
   } catch (e) { out.env = "ERR " + e.message; }
+  // Hermes persistence diagnostics: state.db rows + Postgres backup state
+  try {
+    const dbPath = path.join(hm, "state.db");
+    if (!fs.existsSync(dbPath)) {
+      out.hermesStateDb = { exists: false };
+    } else {
+      out.hermesStateDb = { exists: true, sizeKB: (fs.statSync(dbPath).size / 1024).toFixed(0) };
+    }
+  } catch (e) { out.hermesStateDb = "ERR " + e.message; }
+  out.hermesLastSave = global.__hermesLastSave || null;
+  out.memory = await execDiag(
+    "echo -n 'limit: '; cat /sys/fs/cgroup/memory.max 2>/dev/null; " +
+    "echo -n 'current: '; cat /sys/fs/cgroup/memory.current 2>/dev/null; " +
+    "echo '--- top RSS (KB) ---'; " +
+    "for p in /proc/[0-9]*; do r=$(awk '/VmRSS/{print $2}' $p/status 2>/dev/null); " +
+    "c=$(awk '/Name/{print $2}' $p/status 2>/dev/null); " +
+    "[ -n \"$r\" ] && echo \"$r $c\"; done | sort -rn | head -8",
+    8000
+  );
+  if (pgPool) {
+    try {
+      const client = await pgPool.connect();
+      try {
+        const r = await client.query(
+          "SELECT row_id, length(data) AS bytes, updated_at FROM hermes_state"
+        );
+        out.hermesPg = r.rows.map(row => ({
+          row_id: row.row_id,
+          KB: row.bytes ? (row.bytes / 1024).toFixed(0) : 0,
+          updated_at: row.updated_at,
+        }));
+      } finally { client.release(); }
+    } catch (e) { out.hermesPg = "ERR " + e.message; }
+  } else {
+    out.hermesPg = "no pgPool";
+  }
   const gmFile = path.join(__dirname, "node_modules/hermes-web-ui/dist/server/services/hermes/gateway-manager.js");
   try {
     const gm = fs.readFileSync(gmFile, "utf-8");
