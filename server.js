@@ -103,7 +103,17 @@ async function initPostgres() {
   }
   try {
     const { Pool } = require("pg");
-    pgPool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
+    pgPool = new Pool({
+      connectionString: DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      // This DB is tiny (Aiven free plan) and shared with Pentaract. A default
+      // pool of 10 idle connections exhausts every slot and makes ALL pg
+      // queries (incl. hermes backup/restore) hang forever. Cap at 3 and
+      // release idle connections + fail fast instead of hanging.
+      max: 3,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
     // Test connection
     const client = await pgPool.connect();
     await client.query("SELECT 1");
