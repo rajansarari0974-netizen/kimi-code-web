@@ -27,10 +27,15 @@ RUN node scripts/claw-branding.js
 # Allow all Render hosts
 ENV KIMI_CODE_ALLOWED_HOSTS=.onrender.com,localhost,127.0.0.1
 
+# Tight memory budget: cap glibc malloc arenas (Python/node threads each get
+# their own arena by default — several MB each). Helps stay under the 512MiB
+# free-tier cap so the memory watchdog restarts less often.
+ENV MALLOC_ARENA_MAX=2
+
 EXPOSE 10000
 
 # Docker HEALTHCHECK — unified entrypoint serves kimi UI on /
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3   CMD curl -sf http://localhost:${PORT:-10000}/ || exit 1
 
 # Unified entrypoint (kimi + hermes proxy in one process)
-CMD ["node", "--max-old-space-size=96", "server.js"]
+CMD ["node", "--max-old-space-size=64", "server.js"]
