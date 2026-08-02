@@ -1349,21 +1349,36 @@ cfg.platforms.api_server.key = (() => {
       // instance has been up for 3 minutes.
       if (Date.now() - mainStart < 3 * 60 * 1000) return;
       let current = null;
+      let anon = null;
       let limit = 512 * 1024 * 1024; // fallback: Render free = 512MiB
       try {
         const cgCurrent = fs.readFileSync("/sys/fs/cgroup/memory.current", "utf-8").trim();
         if (cgCurrent) current = parseInt(cgCurrent, 10);
         const cgMax = fs.readFileSync("/sys/fs/cgroup/memory.max", "utf-8").trim();
         if (cgMax && cgMax !== "max") limit = parseInt(cgMax, 10);
+        // Page cache is reclaimable — the kernel reclaims it under pressure
+        // instead of OOM-killing, so watch anonymous memory (the real OOM
+        // risk) and give cache spikes headroom. Falls back to total when
+        // memory.stat is unavailable.
+        try {
+          const stat = fs.readFileSync("/sys/fs/cgroup/memory.stat", "utf-8");
+          const m = stat.match(/^file (\d+)$/m);
+          if (m) {
+            const fileCache = parseInt(m[1], 10);
+            if (fileCache >= 0) anon = current - fileCache;
+          }
+        } catch (e) { /* no stat — fall back to total */ }
       } catch (e) {
         // Not in a cgroup (local dev) — nothing to watch
         return;
       }
       if (current === null) return;
+      const watchValue = (anon !== null && anon >= 0) ? anon : current;
       const threshold = Math.floor(limit * 0.95);
-      if (current > threshold) {
-        console.error("[watchdog] memory at " + Math.round(current / 1024 / 1024) + "MB / "
-          + Math.round(limit / 1024 / 1024) + "MB (limit 95%) — backing up and restarting gracefully");
+      if (watchValue > threshold) {
+        console.error("[watchdog] anon memory at " + Math.round(watchValue / 1024 / 1024) + "MB (total "
+          + Math.round(current / 1024 / 1024) + "MB) / " + Math.round(limit / 1024 / 1024)
+          + "MB (limit 95%) — backing up and restarting gracefully");
         clearInterval(watchdogInterval);
         clearInterval(backupInterval);
         clearInterval(hermesInterval);
