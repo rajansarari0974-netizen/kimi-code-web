@@ -1163,7 +1163,7 @@ async function main() {
     env: {
       ...process.env,
       PORT: String(KIMI_PORT),
-      NODE_OPTIONS: "--max-old-space-size=160",
+      NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=256",
     },
     shell: kimiBin === "npx",
   });
@@ -1279,7 +1279,7 @@ cfg.platforms.api_server.key = (() => {
         UPSTREAM: HERMES_UPSTREAM,
         AUTH_DISABLED: "1",
         HERMES_BIN: HERMES_BIN,
-        NODE_OPTIONS: "--max-old-space-size=64",
+        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=128",
       },
     });
     hermesProc.on("exit", (code, sig) => {
@@ -1330,7 +1330,7 @@ cfg.platforms.api_server.key = (() => {
   // killer fires (SIGKILL) the whole instance is recycled with a FRESH
   // filesystem — that was the root cause of Claw sessions disappearing and
   // "disconnected" errors. Instead of dying to OOM, back everything up to
-  // Postgres and exit(0) so Render restarts us cleanly and the backup is
+  // Postgres and exit(1) so Render restarts us cleanly and the backup is
   // restored on boot. Reads the real cgroup limit when available.
   const watchdogInterval = setInterval(async () => {
     try {
