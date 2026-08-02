@@ -1111,6 +1111,9 @@ async function main() {
   console.error("=== Kimi Code Server v4.0 (Kimi Code + Kimi Claw, one service) ===");
   console.error("[main] PORT=" + PORT + " KIMI_HOME=" + KIMI_HOME);
 
+  // Boot timestamp — used by the memory watchdog to avoid killing during boot
+  const mainStart = Date.now();
+
   // Init PostgreSQL
   await initPostgres();
 
@@ -1331,6 +1334,10 @@ cfg.platforms.api_server.key = (() => {
   // restored on boot. Reads the real cgroup limit when available.
   const watchdogInterval = setInterval(async () => {
     try {
+      // Grace period: boot takes ~2 min (restore + gateway + kimi) and memory
+      // is at its peak mid-boot. Never kill during boot — only arm once the
+      // instance has been up for 3 minutes.
+      if (Date.now() - mainStart < 3 * 60 * 1000) return;
       let current = null;
       let limit = 512 * 1024 * 1024; // fallback: Render free = 512MiB
       try {
@@ -1354,7 +1361,9 @@ cfg.platforms.api_server.key = (() => {
         try { await backupSessions(); } catch (e) { console.error("[watchdog] backup error: " + e.message); }
         try { await saveHermesToPostgres(); } catch (e) { console.error("[watchdog] hermes backup error: " + e.message); }
         console.error("[watchdog] backup complete, exiting for clean restart");
-        process.exit(0);
+        // exit(1): Render treats non-zero as a crash and restarts the instance.
+        // (exit(0) may be treated as a clean stop and leave the service down.)
+        process.exit(1);
       }
     } catch (e) {
       console.error("[watchdog] error: " + e.message);
