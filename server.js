@@ -1350,10 +1350,10 @@ cfg.platforms.api_server.key = (() => {
         return;
       }
       if (current === null) return;
-      const threshold = Math.floor(limit * 0.88);
+      const threshold = Math.floor(limit * 0.95);
       if (current > threshold) {
         console.error("[watchdog] memory at " + Math.round(current / 1024 / 1024) + "MB / "
-          + Math.round(limit / 1024 / 1024) + "MB (limit 88%) — backing up and restarting gracefully");
+          + Math.round(limit / 1024 / 1024) + "MB (limit 95%) — backing up and restarting gracefully");
         clearInterval(watchdogInterval);
         clearInterval(backupInterval);
         clearInterval(hermesInterval);
