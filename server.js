@@ -26,6 +26,9 @@ const KIMI_PORT = PORT + 1;            // kimi web internal port
 const HERMES_PORT = 8648;              // hermes-web-ui (Kimi Claw UI) internal port
 const HERMES_UPSTREAM = "http://127.0.0.1:8642"; // hermes agent gateway
 const HERMES_BIN = process.env.HERMES_BIN || "/opt/hermes/bin/hermes";
+// RUN_MODE: "all" (default, kimi web + claw) | "kimi" (web only) | "claw" (claw only)
+// Lets the same repo run on two free services — each gets its own 512MiB.
+const RUN_MODE = (process.env.RUN_MODE || "all").toLowerCase();
 
 // ── PostgreSQL config ─────────────────────────────────────────────
 const DATABASE_URL = process.env.DATABASE_URL || "";
@@ -722,6 +725,8 @@ function startSessionWatcher() {
 // ── HTTP proxy: /claw* → hermes-web-ui, everything else → kimi web ──
 
 function routeTarget(reqUrl) {
+  if (RUN_MODE === "claw") return HERMES_PORT;
+  if (RUN_MODE === "kimi") return KIMI_PORT;
   return reqUrl.startsWith("/claw") ? HERMES_PORT : KIMI_PORT;
 }
 
@@ -1168,15 +1173,19 @@ async function main() {
   console.error("[main] Starting Kimi web on 0.0.0.0:" + KIMI_PORT);
   console.error("[main] Cmd: " + kimiBin + " " + args.join(" "));
 
-  const kimiProc = spawn(kimiBin, args, {
-    stdio: ["ignore", "inherit", "inherit"],
-    env: {
-      ...process.env,
-      PORT: String(KIMI_PORT),
-      NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=224",
-    },
-    shell: kimiBin === "npx",
-  });
+  // In claw-only mode skip the kimi web process entirely (it runs on a separate service)
+  let kimiProc = null;
+  if (RUN_MODE !== "claw") {
+    kimiProc = spawn(kimiBin, args, {
+      stdio: ["ignore", "inherit", "inherit"],
+      env: {
+        ...process.env,
+        PORT: String(KIMI_PORT),
+        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=224",
+      },
+      shell: kimiBin === "npx",
+    });
+  }
 
   // ── Seed Hermes gateway config (API server needs API_SERVER_KEY + aiohttp) ──
   try {
@@ -1279,7 +1288,7 @@ cfg.platforms.api_server.key = (() => {
   // Start Kimi Claw (hermes-web-ui) on HERMES_PORT — non-fatal if missing
   let hermesProc = null;
   const hermesEntry = path.join(__dirname, "node_modules/hermes-web-ui/dist/server/index.js");
-  if (fs.existsSync(hermesEntry)) {
+  if (RUN_MODE !== "kimi" && fs.existsSync(hermesEntry)) {
     console.error("[main] Starting Kimi Claw (hermes-web-ui) on 0.0.0.0:" + HERMES_PORT);
     hermesProc = spawn(process.execPath, [hermesEntry], {
       stdio: ["ignore", "inherit", "inherit"],
@@ -1303,11 +1312,15 @@ cfg.platforms.api_server.key = (() => {
   const proxyServer = startProxy();
 
   // Fallback: ensure gateway is up (web-ui startAll may return [] profiles)
-  ensureGatewayBoot().catch(e => console.error("[gateway-boot] Error: " + e.message));
+  if (RUN_MODE !== "kimi") {
+    ensureGatewayBoot().catch(e => console.error("[gateway-boot] Error: " + e.message));
+  }
 
   // Start real-time session watcher (saves to PG within ~2s of any change)
   // Wait a few seconds after kimi starts so the session files/index exist
-  setTimeout(() => startSessionWatcher(), 5000);
+  if (RUN_MODE !== "claw") {
+    setTimeout(() => startSessionWatcher(), 5000);
+  }
 
   // Periodic backup every 5 min as safety net
   const backupInterval = setInterval(() => {
@@ -1331,7 +1344,7 @@ cfg.platforms.api_server.key = (() => {
   const keepaliveInterval = setInterval(() => {
     const selfUrl = process.env.RENDER_EXTERNAL_URL;
     if (!selfUrl) return;
-    fetch(selfUrl + "/claw/")
+    fetch(selfUrl + (RUN_MODE === "claw" ? "/" : "/claw/"))
       .then(r => console.error("[keepalive] ping " + r.status))
       .catch(e => console.error("[keepalive] error: " + e.message));
   }, 10 * 60 * 1000);
@@ -1413,7 +1426,7 @@ cfg.platforms.api_server.key = (() => {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
 
-  kimiProc.on("exit", (code, sig) => {
+  if (kimiProc) kimiProc.on("exit", (code, sig) => {
     console.error("[main] Kimi exited (code=" + code + ", signal=" + sig + "), "
       + "saving sessions one last time...");
     // Save sessions immediately on exit
