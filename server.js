@@ -1173,7 +1173,7 @@ async function main() {
     env: {
       ...process.env,
       PORT: String(KIMI_PORT),
-      NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=256",
+      NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=224",
     },
     shell: kimiBin === "npx",
   });
@@ -1289,7 +1289,7 @@ cfg.platforms.api_server.key = (() => {
         UPSTREAM: HERMES_UPSTREAM,
         AUTH_DISABLED: "1",
         HERMES_BIN: HERMES_BIN,
-        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=96",
+        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=64",
       },
     });
     hermesProc.on("exit", (code, sig) => {
