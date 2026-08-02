@@ -983,7 +983,7 @@ async function main() {
     const apiKey = crypto.randomBytes(32).toString("hex");
     const configYaml = [
       "model:",
-      "  default: nvidia/nemotron-3-super-120b-a12b:free",
+      "  default: nvidia/nemotron-3-super-120b-a12b",
       "  provider: nvidia",
       "platforms:",
       "  api_server:",
