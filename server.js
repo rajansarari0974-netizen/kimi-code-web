@@ -28,7 +28,7 @@ const HERMES_UPSTREAM = "http://127.0.0.1:8642"; // hermes agent gateway
 const HERMES_BIN = process.env.HERMES_BIN || "/opt/hermes/bin/hermes";
 // RUN_MODE: "all" (default, kimi web + claw) | "kimi" (web only) | "claw" (claw only)
 // Lets the same repo run on two free services — each gets its own 512MiB.
-const RUN_MODE = (process.env.RUN_MODE || "all").toLowerCase();
+const RUN_MODE = (process.env.RUN_MODE || "kimi").toLowerCase(); // kimi-only default: saves ~190MB RAM, kills crash loop
 
 // ── PostgreSQL config ─────────────────────────────────────────────
 const DATABASE_URL = process.env.DATABASE_URL || "";
