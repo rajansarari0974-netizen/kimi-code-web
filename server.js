@@ -93,7 +93,7 @@ try {
   console.error("[setup] Failed to write config: " + e.message);
 }
 
-process.env.KIMI_CODE_ALLOWED_HOSTS = ".onrender.com,localhost,127.0.0.1";
+process.env.KIMI_CODE_ALLOWED_HOSTS = ".onrender.com,.up.railway.app,localhost,127.0.0.1";
 process.env.KIMI_CODE_CORS_ORIGINS = "*";
 
 // ── PostgreSQL helpers ────────────────────────────────────────────
