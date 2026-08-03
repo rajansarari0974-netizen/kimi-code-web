@@ -1033,7 +1033,12 @@ async function handleDiag(req, res) {
 
   // Direct gateway start test: spawn with same env as web-ui, probe /health
   // at 6/10/13s, dump processes+ports+hermes dir, then leave running if OK.
+  // NOTE: skipped in kimi-only mode — spawning the gateway (~125MB) pushed
+  // anonymous memory over the 510MB watchdog threshold and caused crash loops.
   const testOut = { log: "", probes: [], leftRunning: false };
+  if (RUN_MODE === "kimi") {
+    testOut.log = "skipped (RUN_MODE=kimi - gateway spawn would exceed free-tier RAM)";
+  } else {
   try {
     const child = spawn(HERMES_BIN, ["gateway", "run", "--replace"], {
       env: { ...process.env, HERMES_HOME: hm },
@@ -1063,6 +1068,7 @@ async function handleDiag(req, res) {
     }
   } catch (e) {
     testOut.log = "TEST ERR " + e.message;
+  }
   }
   out.gatewayTest = testOut;
 
