@@ -439,6 +439,8 @@ function pentaractLogin() {
         catch (e) { reject(new Error("Login parse error: " + body.substring(0, 100))); }
       });
     });
+    // Hard timeout: a hung Pentaract request must never block the restart path.
+    req.setTimeout(15000, () => req.destroy(new Error("Pentaract login timeout")));
     req.on("error", reject);
     req.write(data);
     req.end();
@@ -464,6 +466,8 @@ function pentaractUpload(token, filePath, remotePath) {
       res.on("data", (chunk) => (body += chunk));
       res.on("end", () => { if (res.statusCode < 300) resolve(body); else reject(new Error("Upload failed: HTTP " + res.statusCode + " " + body)); });
     });
+    // Hard timeout: a hung Pentaract upload must never block the restart path.
+    req.setTimeout(15000, () => req.destroy(new Error("Pentaract upload timeout")));
     req.on("error", reject);
     req.write(bodyBuf);
     req.end();
@@ -485,6 +489,8 @@ function pentaractDownload(token, remotePath) {
         else { const body = Buffer.concat(chunks).toString(); if (res.statusCode === 404) resolve(null); else reject(new Error("Download failed: HTTP " + res.statusCode + " " + body)); }
       });
     });
+    // Hard timeout: a hung Pentaract download must never block the restart path.
+    req.setTimeout(15000, () => req.destroy(new Error("Pentaract download timeout")));
     req.on("error", reject);
     req.end();
   });
@@ -1144,6 +1150,16 @@ function startProxy() {
       handleDiag(req, res);
       return;
     }
+    // Upload cap: a big body (APK etc.) would OOM kimi on the free tier —
+    // reject it here with a clear message instead of crashing the whole service.
+    const MAX_BODY = 40 * 1024 * 1024; // 40 MiB
+    const cl = parseInt(String(req.headers["content-length"] || "0"), 10);
+    if (cl > MAX_BODY) {
+      console.error("[proxy] REJECT body " + Math.round(cl / 1024 / 1024) + "MB > " + (MAX_BODY / 1024 / 1024) + "MB limit");
+      res.writeHead(413, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("File too large: " + Math.round(cl / 1024 / 1024) + "MB. Max upload 40MB on the free tier — bade APK ke liye paid RAM chahiye.");
+      return;
+    }
     // Kimi Claw lazy chunks (Vite base "/") request root /assets/*, but the
     // webui only serves them under /claw/. Try the webui first; on 404 fall
     // through to the normal proxy (kimi web keeps its own /assets/*).
@@ -1268,11 +1284,15 @@ async function main() {
     });
     kimiProc.on("exit", (code, sig) => {
       if (shuttingDown) return;
-      console.error("[main] Kimi exited (code=" + code + ", signal=" + sig + "), saving sessions...");
-      backupSessions()
-        .then(() => saveHermesToPostgres())
-        .then(() => restartKimi(code, sig))
-        .catch(() => restartKimi(code, sig));
+      console.error("[main] Kimi exited (code=" + code + ", signal=" + sig + "), backing up in background, restarting...");
+      // Restart FIRST so the service comes back no matter what; backup runs in
+      // the background with a hard 15s race-timeout so a hung Pentaract call
+      // can never block the restart path again.
+      restartKimi(code, sig);
+      Promise.race([
+        backupSessions().then(() => saveHermesToPostgres()),
+        new Promise((r) => setTimeout(r, 15000)),
+      ]).catch((e) => console.error("[main] exit backup error: " + (e && e.message)));
     });
     // Survived 90s? Healthier than a crash loop — reset the strike counter.
     setTimeout(() => {
