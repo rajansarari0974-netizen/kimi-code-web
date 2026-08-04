@@ -559,6 +559,68 @@ async function restoreSessions() {
   }
 }
 
+// ── Wire file repair ─────────────────────────────────────────
+// A crash mid-append can leave a truncated/corrupted line in a session's
+// wire.jsonl. The web UI then refuses to load that conversation at all
+// ("corrupted line N ... JSON.parse"). Run this AFTER restore so any bad
+// lines brought back from PostgreSQL/Pentaract are dropped before the
+// gateway starts reading them. Only invalid LINES are removed — the rest
+// of the conversation survives.
+
+function repairWireFiles() {
+  try {
+    if (!fs.existsSync(SESSIONS_DIR)) return;
+    const buckets = fs.readdirSync(SESSIONS_DIR).filter((f) => {
+      try { return fs.statSync(path.join(SESSIONS_DIR, f)).isDirectory(); }
+      catch (e) { return false; }
+    });
+    let repaired = 0;
+    for (const bucket of buckets) {
+      const bucketDir = path.join(SESSIONS_DIR, bucket);
+      const sessionDirs = fs.readdirSync(bucketDir).filter((f) => {
+        try { return fs.statSync(path.join(bucketDir, f)).isDirectory(); }
+        catch (e) { return false; }
+      });
+      for (const s of sessionDirs) {
+        const agentsDir = path.join(bucketDir, s, "agents");
+        if (!fs.existsSync(agentsDir)) continue;
+        const agentDirs = fs.readdirSync(agentsDir).filter((f) => {
+          try { return fs.statSync(path.join(agentsDir, f)).isDirectory(); }
+          catch (e) { return false; }
+        });
+        for (const a of agentDirs) {
+          const wirePath = path.join(agentsDir, a, "wire.jsonl");
+          if (!fs.existsSync(wirePath)) continue;
+          let content;
+          try { content = fs.readFileSync(wirePath, "utf-8"); }
+          catch (e) { continue; }
+          const endsWithNL = content.endsWith("\n");
+          const lines = content.split("\n");
+          const out = [];
+          let bad = 0;
+          for (const line of lines) {
+            if (line.trim() === "") { out.push(line); continue; }
+            try { JSON.parse(line); out.push(line); }
+            catch (e) { bad++; }
+          }
+          if (bad > 0) {
+            let rebuilt = out.join("\n");
+            if (endsWithNL && !rebuilt.endsWith("\n")) rebuilt += "\n";
+            const tmp = wirePath + ".repair.tmp";
+            fs.writeFileSync(tmp, rebuilt);
+            fs.renameSync(tmp, wirePath);
+            repaired++;
+            console.error(`[repair] ${wirePath}: dropped ${bad} corrupt line(s)`);
+          }
+        }
+      }
+    }
+    console.error("[repair] wire.jsonl scan done, " + repaired + " file(s) fixed");
+  } catch (e) {
+    console.error("[repair] wire scan failed: " + e.message);
+  }
+}
+
 // ── Registry self-healing ────────────────────────────────────
 // If workspaces.json / session_index.jsonl are missing or empty (e.g. an
 // older blob clobbered them), rebuild them from the session folders on disk.
@@ -1145,6 +1207,10 @@ async function main() {
 
   // Restore sessions (PostgreSQL primary, Pentaract fallback)
   await restoreSessions();
+
+  // Repair any wire.jsonl corrupted by a crash (bad JSON line => UI refuses
+  // to load the conversation). Run after restore, before kimi web starts.
+  repairWireFiles();
 
   // Self-heal registry files from session folders BEFORE kimi web starts and
   // before the first PG save — otherwise the UI shows an empty session list
