@@ -1176,12 +1176,21 @@ async function main() {
     : ["web", "--no-open",
        "--port", String(KIMI_PORT), "--host", "0.0.0.0", "--dangerous-bypass-auth"];
 
-  console.error("[main] Starting Kimi web on 0.0.0.0:" + KIMI_PORT);
-  console.error("[main] Cmd: " + kimiBin + " " + args.join(" "));
-
-  // In claw-only mode skip the kimi web process entirely (it runs on a separate service)
+  // Crash-proof: kimi is spawned by a wrapper that RESTARTS it on exit instead
+  // of dying with it. Consecutive crashes are counted; after 3 in a row the
+  // wrapper exits and lets Railway restart the container (the Postgres backup
+  // is restored on boot, so no sessions are lost).
   let kimiProc = null;
-  if (RUN_MODE !== "claw") {
+  let kimiRestartCount = 0;
+  let shuttingDown = false;
+  let lastWatchdogRestart = 0;
+
+  const startKimiWeb = () => {
+    if (shuttingDown) return;
+    // In claw-only mode kimi runs on a separate service — never spawn it here
+    if (RUN_MODE === "claw") return;
+    console.error("[main] Starting Kimi web on 0.0.0.0:" + KIMI_PORT);
+    console.error("[main] Cmd: " + kimiBin + " " + args.join(" "));
     kimiProc = spawn(kimiBin, args, {
       stdio: ["ignore", "inherit", "inherit"],
       env: {
@@ -1191,7 +1200,32 @@ async function main() {
       },
       shell: kimiBin === "npx",
     });
-  }
+    kimiProc.on("exit", (code, sig) => {
+      if (shuttingDown) return;
+      console.error("[main] Kimi exited (code=" + code + ", signal=" + sig + "), saving sessions...");
+      backupSessions()
+        .then(() => saveHermesToPostgres())
+        .then(() => restartKimi(code, sig))
+        .catch(() => restartKimi(code, sig));
+    });
+    // Survived 90s? Healthier than a crash loop — reset the strike counter.
+    setTimeout(() => {
+      if (kimiProc && kimiProc.exitCode === null) kimiRestartCount = 0;
+    }, 90000).unref();
+  };
+
+  const restartKimi = (code, sig) => {
+    kimiRestartCount += 1;
+    if (kimiRestartCount >= 3) {
+      console.error("[main] Kimi crashed " + kimiRestartCount + " times in a row — exiting; Railway will restart the container");
+      process.exit(code || 1);
+    }
+    const delay = kimiRestartCount === 1 ? 4000 : 10000;
+    console.error("[main] Restarting Kimi in " + delay + "ms (attempt " + kimiRestartCount + ")");
+    setTimeout(() => startKimiWeb(), delay);
+  };
+
+  startKimiWeb();
 
   // ── Seed Hermes gateway config (API server needs API_SERVER_KEY + aiohttp) ──
   try {
@@ -1304,7 +1338,9 @@ cfg.platforms.api_server.key = (() => {
         UPSTREAM: HERMES_UPSTREAM,
         AUTH_DISABLED: "1",
         HERMES_BIN: HERMES_BIN,
-        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=64",
+        // Cap Claw's heap regardless of the wrapper's NODE_OPTIONS (which is
+        // sized for kimi), so the two don't stack up to an OOM.
+        NODE_OPTIONS: "--max-old-space-size=128",
       },
     });
     hermesProc.on("exit", (code, sig) => {
@@ -1355,21 +1391,24 @@ cfg.platforms.api_server.key = (() => {
       .catch(e => console.error("[keepalive] error: " + e.message));
   }, 10 * 60 * 1000);
 
-  // Memory watchdog: Render free tier caps RAM at 512MiB. When the kernel OOM
-  // killer fires (SIGKILL) the whole instance is recycled with a FRESH
-  // filesystem — that was the root cause of Claw sessions disappearing and
-  // "disconnected" errors. Instead of dying to OOM, back everything up to
-  // Postgres and exit(1) so Render restarts us cleanly and the backup is
-  // restored on boot. Reads the real cgroup limit when available.
+  // Memory watchdog: the free-tier kernel OOM killer SIGKILLs the whole cgroup
+  // when RAM is exhausted, which took down kimi AND lost unsaved session state.
+  // Instead of dying to OOM, back everything up to Postgres and gracefully
+  // restart ONLY kimi (the wrapper stays up, so the proxy and the PG-backed
+  // sessions never drop). Fires at 85% of the cgroup limit — early enough to
+  // beat the OOM killer, late enough not to flap during boot.
   const watchdogInterval = setInterval(async () => {
     try {
       // Grace period: boot takes ~2 min (restore + gateway + kimi) and memory
       // is at its peak mid-boot. Never kill during boot — only arm once the
       // instance has been up for 3 minutes.
       if (Date.now() - mainStart < 3 * 60 * 1000) return;
+      // After a watchdog restart, give the fresh kimi room to boot before
+      // judging it again (avoids a restart loop while memory is still high).
+      if (Date.now() - lastWatchdogRestart < 60 * 1000) return;
       let current = null;
       let anon = null;
-      let limit = 512 * 1024 * 1024; // fallback: Render free = 512MiB
+      let limit = 512 * 1024 * 1024; // fallback: free tier = 512MiB
       try {
         const cgCurrent = fs.readFileSync("/sys/fs/cgroup/memory.current", "utf-8").trim();
         if (cgCurrent) current = parseInt(cgCurrent, 10);
@@ -1393,21 +1432,25 @@ cfg.platforms.api_server.key = (() => {
       }
       if (current === null) return;
       const watchValue = (anon !== null && anon >= 0) ? anon : current;
-      const threshold = Math.floor(limit * 0.95);
+      const threshold = Math.floor(limit * 0.85);
       if (watchValue > threshold) {
         console.error("[watchdog] anon memory at " + Math.round(watchValue / 1024 / 1024) + "MB (total "
           + Math.round(current / 1024 / 1024) + "MB) / " + Math.round(limit / 1024 / 1024)
-          + "MB (limit 95%) — backing up and restarting gracefully");
-        clearInterval(watchdogInterval);
-        clearInterval(backupInterval);
-        clearInterval(hermesInterval);
-        clearInterval(keepaliveInterval);
+          + "MB (limit 85%) — backing up, then restarting Kimi only");
+        lastWatchdogRestart = Date.now();
         try { await backupSessions(); } catch (e) { console.error("[watchdog] backup error: " + e.message); }
         try { await saveHermesToPostgres(); } catch (e) { console.error("[watchdog] hermes backup error: " + e.message); }
-        console.error("[watchdog] backup complete, exiting for clean restart");
-        // exit(1): Render treats non-zero as a crash and restarts the instance.
-        // (exit(0) may be treated as a clean stop and leave the service down.)
-        process.exit(1);
+        if (kimiProc && kimiProc.exitCode === null) {
+          console.error("[watchdog] sending SIGTERM to Kimi — wrapper will restart it with a fresh heap");
+          kimiProc.kill("SIGTERM");
+          // If kimi ignores SIGTERM (stuck), escalate so the exit handler fires.
+          setTimeout(() => {
+            if (kimiProc && kimiProc.exitCode === null) kimiProc.kill("SIGKILL");
+          }, 6000).unref();
+        } else {
+          console.error("[watchdog] no live Kimi process — exiting for container restart");
+          process.exit(1);
+        }
       }
     } catch (e) {
       console.error("[watchdog] error: " + e.message);
@@ -1416,6 +1459,7 @@ cfg.platforms.api_server.key = (() => {
 
   // Backup on exit
   const shutdown = async (signal) => {
+    shuttingDown = true; // stop the exit handler from auto-restarting
     console.error("[shutdown] " + signal + " received, backing up sessions...");
     clearInterval(backupInterval);
     clearInterval(hermesInterval);
@@ -1427,24 +1471,13 @@ cfg.platforms.api_server.key = (() => {
     console.error("[shutdown] Backup done, forwarding " + signal + " to children...");
     if (kimiProc) kimiProc.kill(signal);
     if (hermesProc) hermesProc.kill(signal);
+    // Children got their signal; give them a moment to flush, then exit so
+    // Railway sees a clean stop (it force-kills after the grace period anyway).
+    setTimeout(() => process.exit(0), 3000).unref();
   };
 
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
-
-  if (kimiProc) kimiProc.on("exit", (code, sig) => {
-    console.error("[main] Kimi exited (code=" + code + ", signal=" + sig + "), "
-      + "saving sessions one last time...");
-    // Save sessions immediately on exit
-    backupSessions().then(() => {
-      return saveHermesToPostgres();
-    }).then(() => {
-      console.error("[main] Final backup done, exiting.");
-      process.exit(code || 0);
-    }).catch(() => {
-      process.exit(code || 0);
-    });
-  });
 
   proxyServer.on("close", () => {
     console.error("[proxy] Proxy closed");
