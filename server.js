@@ -1323,12 +1323,13 @@ async function main() {
     if (RUN_MODE === "claw") return;
     console.error("[main] Starting Kimi web on 0.0.0.0:" + KIMI_PORT);
     console.error("[main] Cmd: " + kimiBin + " " + args.join(" "));
+    console.error("[main] kimi child heap forced to --max-old-space-size=384");
     kimiProc = spawn(kimiBin, args, {
       stdio: ["ignore", "inherit", "inherit"],
       env: {
         ...process.env,
         PORT: String(KIMI_PORT),
-        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=512",
+        NODE_OPTIONS: "--max-old-space-size=384", // forced: Railway service NODE_OPTIONS (~256) was overriding and OOM-crashing the kimi child
       },
       shell: kimiBin === "npx",
     });
