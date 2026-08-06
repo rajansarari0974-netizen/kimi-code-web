@@ -38,4 +38,6 @@ EXPOSE 10000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3   CMD curl -sf http://localhost:${PORT:-10000}/ || exit 1
 
 # Unified entrypoint (kimi + hermes proxy in one process)
-CMD ["node", "--max-old-space-size=64", "server.js"]
+# 256MB heap for the main server process: restore+repair of a ~24MB wire.jsonl
+# needs more than the old 64MB cap (that was the OOM crash-loop cause).
+CMD ["node", "--max-old-space-size=256", "server.js"]
