@@ -20,6 +20,7 @@ const util = require("util");
 const execAsync = util.promisify(exec);
 const httpProxy = require("http-proxy");
 const crypto = require("crypto");
+const readline = require("readline");
 
 const PORT = parseInt(process.env.PORT) || 10000;
 const KIMI_PORT = PORT + 1;            // kimi web internal port
@@ -573,7 +574,7 @@ async function restoreSessions() {
 // gateway starts reading them. Only invalid LINES are removed — the rest
 // of the conversation survives.
 
-function repairWireFiles() {
+async function repairWireFiles() {
   try {
     if (!fs.existsSync(SESSIONS_DIR)) return;
     const buckets = fs.readdirSync(SESSIONS_DIR).filter((f) => {
@@ -597,26 +598,66 @@ function repairWireFiles() {
         for (const a of agentDirs) {
           const wirePath = path.join(agentsDir, a, "wire.jsonl");
           if (!fs.existsSync(wirePath)) continue;
-          let content;
-          try { content = fs.readFileSync(wirePath, "utf-8"); }
-          catch (e) { continue; }
-          const endsWithNL = content.endsWith("\n");
-          const lines = content.split("\n");
-          const out = [];
+          // STREAM line-by-line instead of readFileSync+split: reading a
+          // multi-MB wire.jsonl whole (then splitting into an array of every
+          // line) spiked the container heap and caused the boot OOM right
+          // after PG restore (FATAL ERROR: Reached heap limit). Peak memory
+          // here is now one line at a time.
+          const tmp = wirePath + ".repair.tmp";
           let bad = 0;
-          for (const line of lines) {
-            if (line.trim() === "") { out.push(line); continue; }
-            try { JSON.parse(line); out.push(line); }
-            catch (e) { bad++; }
+          try {
+            // readline never emits a trailing empty line, so remember whether
+            // the original file ended with "\n" (peek the last byte) to
+            // re-add it on rewrite — keeps semantics identical to before.
+            let endsWithNL = false;
+            try {
+              const st = fs.statSync(wirePath);
+              if (st.size > 0) {
+                const fd = fs.openSync(wirePath, "r");
+                const buf = Buffer.alloc(1);
+                fs.readSync(fd, buf, 0, 1, st.size - 1);
+                fs.closeSync(fd);
+                endsWithNL = buf[0] === 0x0a;
+              }
+            } catch (e) {}
+            const rl = readline.createInterface({
+              input: fs.createReadStream(wirePath, "utf-8"),
+              crlfDelay: Infinity,
+            });
+            const out = fs.createWriteStream(tmp, "utf-8");
+            let wrote = false;
+            for await (const line of rl) {
+              let ok;
+              if (line.trim() === "") ok = true;
+              else {
+                try { JSON.parse(line); ok = true; }
+                catch (e) { ok = false; }
+              }
+              if (ok) {
+                if (wrote) out.write("\n");
+                out.write(line);
+                wrote = true;
+              } else {
+                bad++;
+              }
+            }
+            if (wrote && endsWithNL) out.write("\n");
+            out.end();
+            await new Promise((res, rej) => {
+              out.on("finish", res);
+              out.on("error", rej);
+            });
+          } catch (e) {
+            console.error(`[repair] ${wirePath}: scan failed: ${e.message}`);
+            try { fs.unlinkSync(tmp); } catch (_) {}
+            continue;
           }
           if (bad > 0) {
-            let rebuilt = out.join("\n");
-            if (endsWithNL && !rebuilt.endsWith("\n")) rebuilt += "\n";
-            const tmp = wirePath + ".repair.tmp";
-            fs.writeFileSync(tmp, rebuilt);
             fs.renameSync(tmp, wirePath);
             repaired++;
             console.error(`[repair] ${wirePath}: dropped ${bad} corrupt line(s)`);
+          } else {
+            try { fs.unlinkSync(tmp); } catch (_) {}
           }
         }
       }
@@ -1226,7 +1267,7 @@ async function main() {
 
   // Repair any wire.jsonl corrupted by a crash (bad JSON line => UI refuses
   // to load the conversation). Run after restore, before kimi web starts.
-  repairWireFiles();
+  await repairWireFiles();
 
   // Self-heal registry files from session folders BEFORE kimi web starts and
   // before the first PG save — otherwise the UI shows an empty session list
