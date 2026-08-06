@@ -1319,7 +1319,7 @@ async function main() {
       env: {
         ...process.env,
         PORT: String(KIMI_PORT),
-        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=224",
+        NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=512",
       },
       shell: kimiBin === "npx",
     });
