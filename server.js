@@ -116,7 +116,10 @@ async function initPostgres() {
       // release idle connections + fail fast instead of hanging.
       max: 3,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      // Aiven free plan can be slow to accept the first TLS handshake from
+      // Railway — 10s was too short and made whole boots lose PG restore.
+      // 30s keeps boot delay acceptable while surviving slow connects.
+      connectionTimeoutMillis: 30000,
     });
     // Test connection
     const client = await pgPool.connect();
@@ -1254,8 +1257,14 @@ async function main() {
   // Boot timestamp — used by the memory watchdog to avoid killing during boot
   const mainStart = Date.now();
 
-  // Init PostgreSQL
-  await initPostgres();
+  // Init PostgreSQL (retry up to 3x — a single 10s timeout at boot used to
+  // null the pool and lose the PG session restore for the whole container)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const ok = await initPostgres();
+    if (ok) break;
+    console.error("[pg] init attempt " + attempt + "/3 failed, retrying in 3s...");
+    await new Promise((r) => setTimeout(r, 3000));
+  }
 
   // Restore Hermes (Claw) state from PostgreSQL BEFORE the gateway starts —
   // the gateway is spawned later in this function, so restoring here is safe
