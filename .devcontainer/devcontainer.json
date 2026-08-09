@@ -1,6 +1,11 @@
 {
   "name": "Kimi Code",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/sshd:1": {
+      "version": "latest"
+    }
+  },
   "forwardPorts": [10002],
   "portsAttributes": {
     "10002": {
