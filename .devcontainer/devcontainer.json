@@ -1,0 +1,12 @@
+{
+  "name": "Kimi Code",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "forwardPorts": [10002],
+  "portsAttributes": {
+    "10002": {
+      "label": "Kimi Code Server",
+      "visibility": "public"
+    }
+  },
+  "postCreateCommand": "npm install"
+}
