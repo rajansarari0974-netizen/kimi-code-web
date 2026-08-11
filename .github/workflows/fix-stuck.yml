@@ -16,6 +16,7 @@ on:
           - testdeep
           - fixdef
           - fixoz
+          - fixoz2
 permissions:
   contents: read
 jobs:
@@ -198,4 +199,44 @@ jobs:
             echo "== log tail =="
             tail -5 /tmp/start-loop.log
             echo "== fixdef done =="
+          '
+      - name: Fixoz2 - wire working zen model into entries + restart + verify
+        if: inputs.action == 'fixoz2'
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 240 gh codespace ssh -c "$CS" -- '
+            CFG=/home/node/.kimi-code/config.toml
+            [ -f "$CFG" ] || { echo "no config"; exit 0; }
+            cp "$CFG" "$CFG.bak.$(date +%s)"
+            echo "== before =="
+            grep -nE "^default_model|model\s*=\s*\"(deepseek-v4-flash-free|mimo-v2.5-free)\"" "$CFG"
+            sed -i "s/^model = \"deepseek-v4-flash-free\"/model = \"nemotron-3.5-lightning-free\"/" "$CFG"
+            sed -i "s/^model = \"mimo-v2.5-free\"/model = \"nemotron-3.5-lightning-free\"/" "$CFG"
+            sed -i "s/^default_model = .*/default_model = \"opencode-zen-deepseek-v4\"/" "$CFG"
+            echo "== after =="
+            grep -nE "^default_model|model\s*=\s*\"nemotron-3.5-lightning-free\"" "$CFG"
+            echo "== restarting daemon =="
+            pkill -9 -x kimi-code 2>/dev/null
+            pkill -9 -f "^bash start-loop" 2>/dev/null
+            sleep 3
+            cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 < /dev/null &
+            sleep 12
+            echo "== daemon =="
+            pgrep -af -x kimi-code
+            echo "== url check =="
+            curl -s -o /dev/null -w "ui_http=%{http_code}\n" --max-time 20 https://supreme-space-orbit-4qgppx6xq7r7cjwxw-10002.app.github.dev/
+            echo "== wired default live test =="
+            KEY=$(sed -n "/\[providers\..*opencode-zen/,/^\[/p" "$CFG" | grep -m1 -E "api[_-]?key" | sed -E "s/.*=\s*\"?([^\"]+)\"?/\1/")
+            RESP=$(curl -s --max-time 30 https://opencode.ai/zen/v1/chat/completions -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "{\"model\":\"nemotron-3.5-lightning-free\",\"messages\":[{\"role\":\"user\",\"content\":\"say ok\"}],\"max_tokens\":10}")
+            echo "$RESP" | head -c 400; echo
+            echo "== find user session =="
+            find /home/node/.kimi-code/sessions -maxdepth 3 -name "session_d5c45a7f*" -type d 2>/dev/null | head -3
+            for sd in $(find /home/node/.kimi-code/sessions -maxdepth 3 -name "session_d5c45a7f*" -type d 2>/dev/null); do
+              echo "== $sd =="
+              grep -raE "deepseek-v4|opencode-zen|mimo-v2" "$sd" 2>/dev/null | grep -v wire.jsonl | head -5
+            done
+            echo "== log tail =="
+            tail -5 /tmp/start-loop.log
+            echo "== fixoz2 done =="
           '
