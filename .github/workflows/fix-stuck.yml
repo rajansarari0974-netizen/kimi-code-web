@@ -17,6 +17,7 @@ on:
           - fixdef
           - fixoz
           - fixoz2
+          - fixinf
 permissions:
   contents: read
 jobs:
