@@ -15,6 +15,7 @@ on:
           - fixzen
           - testdeep
           - fixdef
+          - fixoz
 permissions:
   contents: read
 jobs:
@@ -138,6 +139,37 @@ jobs:
               echo
             done
             echo "== testdeep done =="
+          '
+      - name: Fixoz - dump zen model entries + live test candidates
+        if: inputs.action == 'fixoz'
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 300 gh codespace ssh -c "$CS" -- '
+            CFG=/home/node/.kimi-code/config.toml
+            [ -f "$CFG" ] || { echo "no config"; exit 0; }
+            echo "== default =="
+            grep -n "^default_model" "$CFG"
+            echo "== zen/deepseek model entry names =="
+            grep -nE "^\[models\..*" "$CFG" | grep -iE "zen|deepseek|dv4|dsv4" | head -20
+            echo "== entries body =="
+            awk "/^\[models\./{flag=0} /^\[models\./ && /zen|deepseek|dv4|dsv4/{flag=1} flag" "$CFG" | grep -vE "api_key|api-key" | head -50
+            KEY=$(sed -n "/\[providers\..*opencode-zen/,/^\[/p" "$CFG" | grep -m1 -E "api[_-]?key" | sed -E "s/.*=\s*\"?([^\"]+)\"?/\1/")
+            echo "key_len=${#KEY}"
+            echo "== live tests =="
+            for MID in deepseek-v4-flash-free deepseek-v4-flash deepseek-v4-pro mimo-v2.5-free nemotron-3.5-lightning-free ling-3.0-flash-free; do
+              RESP=$(curl -s --max-time 30 https://opencode.ai/zen/v1/chat/completions -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "{\"model\":\"$MID\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":5}")
+              if echo "$RESP" | grep -q "\"error\""; then
+                MSG=$(echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get(\"error\",{}).get(\"message\",\"?\"))" 2>/dev/null | head -c 160)
+                echo "FAIL [$MID] => $MSG"
+              else
+                echo "OK   [$MID]"
+              fi
+            done
+            echo "== session dir =="
+            ls -lt /home/node/.kimi-code/sessions/wd_root_94a6b4475803/session_d5c45a7f-7060-4739-a5cd-be8eb53d5955/ 2>/dev/null | head -8
+            grep -raE "deepseek-v4|opencode-zen" /home/node/.kimi-code/sessions/wd_root_94a6b4475803/session_d5c45a7f-7060-4739-a5cd-be8eb53d5955/ 2>/dev/null | grep -v "wire.jsonl" | head -6
+            echo "== fixoz done =="
           '
       - name: Fixdef - set default model to nemotron free
         if: inputs.action == 'fixdef'
