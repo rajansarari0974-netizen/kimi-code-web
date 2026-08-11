@@ -3,13 +3,14 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'diag or fix'
+        description: 'diag or fix or prov'
         required: true
         default: 'diag'
         type: choice
         options:
           - diag
           - fix
+          - prov
 permissions:
   contents: read
 jobs:
@@ -31,3 +32,28 @@ jobs:
           CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
         run: |
           printf 'y\n' | timeout 150 gh codespace ssh -c "$CS" -- 'echo "== before =="; pgrep -af -x kimi-code; pkill -9 -f "^bash -c pgrep -x kimi-code" 2>/dev/null; pkill -9 -x kimi-code 2>/dev/null; pkill -9 -f "^bash start-loop" 2>/dev/null; sleep 3; cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 < /dev/null & sleep 10; echo "== after =="; pgrep -af -x kimi-code; echo "== log tail =="; tail -5 /tmp/start-loop.log; echo "== fix done =="'
+      - name: Prov - dump config + test zen key
+        if: inputs.action == 'prov'
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 150 gh codespace ssh -c "$CS" -- '
+            echo "== whoami/home =="; whoami; echo "$HOME"
+            for d in /home/node/.kimi-code /root/.kimi-code "$HOME/.kimi-code"; do echo "== $d =="; ls -la "$d" 2>/dev/null | head -20; done
+            CFG=""
+            for c in /home/node/.kimi-code/config.toml /root/.kimi-code/config.toml "$HOME/.kimi-code/config.toml"; do [ -f "$c" ] && CFG="$c" && break; done
+            echo "== CFG=$CFG =="
+            [ -n "$CFG" ] || exit 0
+            echo "== config masked =="
+            sed -E "s/(api[_-]?key[[:space:]]*=[[:space:]]*\"?)[^\" ]{6,}/\1MASKED/g; s/(server_password[[:space:]]*=[[:space:]]*\"?)[^\" ]{6,}/\1MASKED/g; s/(sk-[A-Za-z0-9_-]{6})[A-Za-z0-9_-]+/\1MASKED/g" "$CFG" | grep -E "provider|base_url|api_key|model|\[providers|\[models" | head -80
+            echo "== zen key live test =="
+            KEY=$(sed -n "/\[providers\..*opencode-zen/,/^\[/p" "$CFG" | grep -m1 -E "api[_-]?key" | sed -E "s/.*=\s*\"?([^\"]+)\"?/\1/")
+            echo "key_len=${#KEY}"
+            if [ -n "$KEY" ] && [ "$KEY" != "MASKED" ]; then
+              curl -s -o /dev/null -w "models_http=%{http_code}\n" --max-time 20 https://opencode.ai/zen/v1/models -H "Authorization: Bearer $KEY"
+              curl -s --max-time 20 https://opencode.ai/zen/v1/models -H "Authorization: Bearer $KEY" | head -c 200; echo
+            else
+              echo "no zen key in config"
+            fi
+            echo "== prov done =="
+          '
