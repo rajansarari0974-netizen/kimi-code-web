@@ -21,12 +21,7 @@ jobs:
             echo "== before: inferx present? =="
             grep -nE "^\[providers\.inferx\]|^\[models\.inferx" "$CFG" || echo "none"
             if ! grep -q "^\[providers\.inferx\]" "$CFG"; then
-              cat >> "$CFG" <<EOF
-
-[providers.inferx]
-base_url = "https://model.inferx.net/endpoints/v1"
-api_key = "ix_d5f1bea49d716de848a7e84a5ed8791efa34f2f67048ae4d2e74025f166dd0f6"
-EOF
+              printf "\n[providers.inferx]\nbase_url = \"https://model.inferx.net/endpoints/v1\"\napi_key = \"ix_d5f1bea49d716de848a7e84a5ed8791efa34f2f67048ae4d2e74025f166dd0f6\"\n" >> "$CFG"
               echo "provider added"
             else
               echo "provider already exists"
