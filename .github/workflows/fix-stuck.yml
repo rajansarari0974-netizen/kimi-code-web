@@ -1,0 +1,33 @@
+name: codespace-fix
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'diag or fix'
+        required: true
+        default: 'diag'
+        type: choice
+        options:
+          - diag
+          - fix
+permissions:
+  contents: read
+jobs:
+  runfix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      GH_TOKEN: ${{ secrets.GH_CODESPACE_TOKEN }}
+    steps:
+      - name: Diagnose
+        if: inputs.action == 'diag'
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 120 gh codespace ssh -c "$CS" -- 'echo "== ps kimi/node/loop =="; ps aux | grep -iE "kimi|node|start-loop" | grep -v grep; echo "== daemon pgrep =="; pgrep -af kimi-code; echo "== sessions newest =="; ls -lt /home/node/.kimi-code/sessions/ 2>/dev/null | head -15; echo "== start-loop.log =="; tail -30 /tmp/start-loop.log 2>/dev/null; echo "== diag done =="'
+      - name: Fix - restart daemon
+        if: inputs.action == 'fix'
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 150 gh codespace ssh -c "$CS" -- 'echo "== before =="; pgrep -af kimi-code; pkill -9 -f "kimi-code" 2>/dev/null; pkill -9 -f "start-loop" 2>/dev/null; sleep 3; cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 & sleep 8; echo "== after =="; pgrep -af kimi-code; echo "== fix done =="'
