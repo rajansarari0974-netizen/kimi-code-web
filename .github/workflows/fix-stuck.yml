@@ -295,3 +295,4 @@ EOF
             tail -5 /tmp/start-loop.log
             echo "== fixinf done =="
           '
+# nudge re-index
