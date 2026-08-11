@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'diag or fix or prov or fixprov'
+        description: 'diag or fix or prov or fixprov or fixzen'
         required: true
         default: 'diag'
         type: choice
@@ -12,6 +12,7 @@ on:
           - fix
           - prov
           - fixprov
+          - fixzen
 permissions:
   contents: read
 jobs:
@@ -84,4 +85,36 @@ jobs:
               fi
             done
             echo "== fixprov done =="
+          '
+      - name: Fixzen - fix invalid zen model ids + restart + verify
+        if: inputs.action == 'fixzen'
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 240 gh codespace ssh -c "$CS" -- '
+            CFG=/home/node/.kimi-code/config.toml
+            [ -f "$CFG" ] || { echo "no config"; exit 0; }
+            cp "$CFG" "$CFG.bak.$(date +%s)"
+            echo "== before =="
+            grep -nE "model\s*=\s*\"(qwen3\.6-plus-free|minimax-m3-free)\"" "$CFG"
+            sed -i -E "s/^(model\s*=\s*\")qwen3\.6-plus-free(\")/\1qwen3.6-plus\2/; s/^(model\s*=\s*\")minimax-m3-free(\")/\1minimax-m3\2/" "$CFG"
+            echo "== after =="
+            grep -nE "model\s*=\s*\"(qwen3\.6|minimax-m3)" "$CFG"
+            echo "== restarting daemon =="
+            pkill -9 -x kimi-code 2>/dev/null
+            pkill -9 -f "^bash start-loop" 2>/dev/null
+            sleep 3
+            cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 < /dev/null &
+            sleep 12
+            echo "== daemon =="
+            pgrep -af -x kimi-code
+            echo "== url check =="
+            curl -s -o /dev/null -w "ui_http=%{http_code}\n" --max-time 20 https://supreme-space-orbit-4qgppx6xq7r7cjwxw-10002.app.github.dev/
+            echo "== default model live =="
+            KEY=$(sed -n "/\[providers\..*opencode-zen/,/^\[/p" "$CFG" | grep -m1 -E "api[_-]?key" | sed -E "s/.*=\s*\"?([^\"]+)\"?/\1/")
+            RESP=$(curl -s --max-time 30 https://opencode.ai/zen/v1/chat/completions -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "{\"model\":\"nemotron-3-ultra-free\",\"messages\":[{\"role\":\"user\",\"content\":\"say ok\"}],\"max_tokens\":10}")
+            echo "$RESP" | head -c 300; echo
+            echo "== log tail =="
+            tail -5 /tmp/start-loop.log
+            echo "== fixzen done =="
           '
