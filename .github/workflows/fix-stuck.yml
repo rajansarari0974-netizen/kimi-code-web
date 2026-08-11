@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'diag or fix or prov'
+        description: 'diag or fix or prov or fixprov'
         required: true
         default: 'diag'
         type: choice
@@ -11,12 +11,13 @@ on:
           - diag
           - fix
           - prov
+          - fixprov
 permissions:
   contents: read
 jobs:
   runfix:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     env:
       GH_TOKEN: ${{ secrets.GH_CODESPACE_TOKEN }}
     steps:
@@ -56,4 +57,31 @@ jobs:
               echo "no zen key in config"
             fi
             echo "== prov done =="
+          '
+      - name: Fixprov - list zen models + live test each
+        if: inputs.action == 'fixprov'
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 240 gh codespace ssh -c "$CS" -- '
+            CFG=/home/node/.kimi-code/config.toml
+            [ -f "$CFG" ] || { echo "no config"; exit 0; }
+            echo "== default_model =="
+            grep -E "^default_model" "$CFG"
+            echo "== zen model entries =="
+            awk "/^\[models\.opencode-zen/{flag=1} /^\[models\./ && !/^\[models\.opencode-zen/{flag=0} flag" "$CFG"
+            KEY=$(sed -n "/\[providers\..*opencode-zen/,/^\[/p" "$CFG" | grep -m1 -E "api[_-]?key" | sed -E "s/.*=\s*\"?([^\"]+)\"?/\1/")
+            echo "key_len=${#KEY}"
+            echo "== live chat tests =="
+            awk "/^\[models\.opencode-zen/{flag=1} /^\[models\./ && !/^\[models\.opencode-zen/{flag=0} flag" "$CFG" | grep -E "^model\s*=" | sed -E "s/.*=\s*\"?([^\"]+)\"?/\1/" | while read -r MID; do
+              [ -n "$MID" ] || continue
+              RESP=$(curl -s --max-time 30 https://opencode.ai/zen/v1/chat/completions -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "{\"model\":\"$MID\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":5}")
+              if echo "$RESP" | grep -q '"error"'; then
+                MSG=$(echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get(\"error\",{}).get(\"message\",\"unknown\"))" 2>/dev/null)
+                echo "FAIL [$MID] => $MSG"
+              else
+                echo "OK   [$MID]"
+              fi
+            done
+            echo "== fixprov done =="
           '
