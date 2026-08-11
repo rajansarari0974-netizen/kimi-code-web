@@ -24,10 +24,10 @@ jobs:
         env:
           CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
         run: |
-          printf 'y\n' | timeout 120 gh codespace ssh -c "$CS" -- 'echo "== ps kimi/node/loop =="; ps aux | grep -iE "kimi|node|start-loop" | grep -v grep; echo "== daemon pgrep =="; pgrep -af kimi-code; echo "== sessions newest =="; ls -lt /home/node/.kimi-code/sessions/ 2>/dev/null | head -15; echo "== start-loop.log =="; tail -30 /tmp/start-loop.log 2>/dev/null; echo "== diag done =="'
+          printf 'y\n' | timeout 120 gh codespace ssh -c "$CS" -- 'echo "== ps kimi/node/loop =="; ps aux | grep -iE "kimi|node|start-loop" | grep -v grep; echo "== daemon pgrep =="; pgrep -af -x kimi-code; echo "== sessions newest =="; ls -lt /home/node/.kimi-code/sessions/ 2>/dev/null | head -15; echo "== start-loop.log =="; tail -30 /tmp/start-loop.log 2>/dev/null; echo "== diag done =="'
       - name: Fix - restart daemon
         if: inputs.action == 'fix'
         env:
           CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
         run: |
-          printf 'y\n' | timeout 150 gh codespace ssh -c "$CS" -- 'echo "== before =="; pgrep -af kimi-code; pkill -9 -f "kimi-code" 2>/dev/null; pkill -9 -f "start-loop" 2>/dev/null; sleep 3; cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 & sleep 8; echo "== after =="; pgrep -af kimi-code; echo "== fix done =="'
+          printf 'y\n' | timeout 150 gh codespace ssh -c "$CS" -- 'echo "== before =="; pgrep -af -x kimi-code; pkill -9 -f "^bash -c pgrep -x kimi-code" 2>/dev/null; pkill -9 -x kimi-code 2>/dev/null; pkill -9 -f "^bash start-loop" 2>/dev/null; sleep 3; cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 & sleep 10; echo "== after =="; pgrep -af -x kimi-code; echo "== log tail =="; tail -5 /tmp/start-loop.log; echo "== fix done =="'
