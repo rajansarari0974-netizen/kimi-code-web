@@ -134,7 +134,7 @@ jobs:
               RESP=$(curl -s -i --max-time 45 https://opencode.ai/zen/v1/chat/completions -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "{\"model\":\"$MID\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":5}")
               echo "== $MID =="
               echo "$RESP" | grep -iE "^x-ratelimit|^retry-after|rate limit|payment method" | head -6
-              echo "$RESP" | grep -aE '"id"|"content"|"error"' | tail -c 300
+              echo "$RESP" | grep -aE "id|content|error" | tail -c 300
               echo
             done
             echo "== testdeep done =="
