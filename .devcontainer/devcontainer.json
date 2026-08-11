@@ -13,5 +13,6 @@
       "visibility": "public"
     }
   },
-  "postCreateCommand": "npm install"
+  "postCreateCommand": "npm install",
+  "postStartCommand": "nohup bash /workspaces/kimi-code-web/start-loop.sh >/tmp/start-loop.log 2>&1 &"
 }
