@@ -1,13 +1,49 @@
-name: keepalive
+name: codespace-keepalive
+
 on:
   schedule:
-    - cron: '3/5 * * * *'
+    - cron: '2,12,22,32,42,52 * * * *'
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codespace-keepalive
+  cancel-in-progress: false
+
 jobs:
-  ping:
+  keepalive:
     runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      GH_TOKEN: ${{ secrets.GH_CODESPACE_TOKEN }}
     steps:
-      - name: Ping Kimi Code
-        run: curl -sI -m 10 -o /dev/null -w "%{http_code}\n" https://kimi-code-6we8.onrender.com/
-      - name: Ping Kimi Claw health
-        run: curl -sI -m 10 -o /dev/null -w "%{http_code}\n" https://kimi-code-6we8.onrender.com/claw/health
+      - name: Ping codespace and self-heal
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          set -euo pipefail
+          echo "== state check =="
+          state=$(gh api "user/codespaces/$CS" --jq .state)
+          echo "state=$state"
+          if [ "$state" != "Available" ]; then
+            echo "== starting codespace (state=$state) =="
+            gh api -X POST "user/codespaces/$CS/start" >/dev/null || true
+            for i in $(seq 1 18); do
+              sleep 10
+              state=$(gh api "user/codespaces/$CS" --jq .state)
+              echo "poll state=$state"
+              [ "$state" = "Available" ] && break
+            done
+            if [ "$state" != "Available" ]; then
+              echo "codespace failed to become Available, state=$state"
+              exit 1
+            fi
+          fi
+          echo "== ssh ping + kimi watchdog =="
+          printf 'y\n' | timeout 120 gh codespace ssh -c "$CS" -- 'pgrep -x kimi-code >/dev/null || (cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 &); echo keepalive-$(date +%H:%M)'
+          echo "== port visibility =="
+          gh codespace ports visibility -c "$CS" 10002:public || true
+          echo "== url check =="
+          curl -s --max-time 20 -o /dev/null -w "URL HTTP %{http_code}\n" "https://$CS-10002.app.github.dev/" || echo "URL unreachable"
