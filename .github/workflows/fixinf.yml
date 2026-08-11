@@ -1,0 +1,65 @@
+name: fixinf-run
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  runfix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GH_CODESPACE_TOKEN }}
+    steps:
+      - name: Fixinf - add inferx provider + models + restart + verify
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 300 gh codespace ssh -c "$CS" -- '
+            CFG=/home/node/.kimi-code/config.toml
+            [ -f "$CFG" ] || { echo "no config"; exit 0; }
+            cp "$CFG" "$CFG.bak.$(date +%s)"
+            echo "== before: inferx present? =="
+            grep -nE "^\[providers\.inferx\]|^\[models\.inferx" "$CFG" || echo "none"
+            if ! grep -q "^\[providers\.inferx\]" "$CFG"; then
+              cat >> "$CFG" <<EOF
+
+[providers.inferx]
+base_url = "https://model.inferx.net/endpoints/v1"
+api_key = "ix_d5f1bea49d716de848a7e84a5ed8791efa34f2f67048ae4d2e74025f166dd0f6"
+EOF
+              echo "provider added"
+            else
+              echo "provider already exists"
+            fi
+            for pair in "inferx-deepseek-v4-flash:deepseek-v4-flash" "inferx-deepseek-v4-flash-0731:deepseek-v4-flash-0731" "inferx-Agents-A1:Agents-A1" "inferx-Devstral-2-123B-Instruct-2512-int4-AutoRound:Devstral-2-123B-Instruct-2512-int4-AutoRound" "inferx-Ornith-1.0-35B-FP8:Ornith-1.0-35B-FP8" "inferx-Qwen3-Coder-Next-FP8:Qwen3-Coder-Next-FP8" "inferx-Qwen3.6-35B-A3B-FP8:Qwen3.6-35B-A3B-FP8" "inferx-Qwen3.6-35B-A3B-fp8-no-thinking:Qwen3.6-35B-A3B-fp8-no-thinking"; do
+              NAME="${pair%%:*}"
+              MID="${pair##*:}"
+              if ! grep -q "^\[models\.$NAME\]" "$CFG"; then
+                printf "\n[models.%s]\nprovider = \"inferx\"\nmodel = \"%s\"\n" "$NAME" "$MID" >> "$CFG"
+                echo "added model $NAME -> $MID"
+              else
+                echo "exists model $NAME"
+              fi
+            done
+            echo "== after: provider section =="
+            awk "/^\[providers\.inferx\]/{f=1} /^\[providers\./ && !/^\[providers\.inferx\]/{f=0} f" "$CFG"
+            echo "== after: model entries =="
+            awk "/^\[models\.inferx/{f=1} /^\[models\./ && !/^\[models\.inferx/{f=0} f" "$CFG" | grep -E "^\[|^provider|^model" | head -40
+            echo "== restarting daemon =="
+            pkill -9 -x kimi-code 2>/dev/null
+            pkill -9 -f "^bash start-loop" 2>/dev/null
+            sleep 3
+            cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 < /dev/null &
+            sleep 12
+            echo "== daemon =="
+            pgrep -af -x kimi-code
+            echo "== url check =="
+            curl -s -o /dev/null -w "ui_http=%{http_code}\n" --max-time 20 https://supreme-space-orbit-4qgppx6xq7r7cjwxw-10002.app.github.dev/
+            echo "== inferx live test =="
+            KEY="ix_d5f1bea49d716de848a7e84a5ed8791efa34f2f67048ae4d2e74025f166dd0f6"
+            RESP=$(curl -s --max-time 45 https://model.inferx.net/endpoints/v1/chat/completions -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "{\"model\":\"deepseek-v4-flash-0731\",\"messages\":[{\"role\":\"user\",\"content\":\"say ok\"}],\"max_tokens\":10}")
+            echo "$RESP" | head -c 500; echo
+            echo "== log tail =="
+            tail -5 /tmp/start-loop.log
+            echo "== fixinf done =="
+          '
