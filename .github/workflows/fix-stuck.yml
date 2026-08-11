@@ -30,4 +30,4 @@ jobs:
         env:
           CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
         run: |
-          printf 'y\n' | timeout 150 gh codespace ssh -c "$CS" -- 'echo "== before =="; pgrep -af -x kimi-code; pkill -9 -f "^bash -c pgrep -x kimi-code" 2>/dev/null; pkill -9 -x kimi-code 2>/dev/null; pkill -9 -f "^bash start-loop" 2>/dev/null; sleep 3; cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 & sleep 10; echo "== after =="; pgrep -af -x kimi-code; echo "== log tail =="; tail -5 /tmp/start-loop.log; echo "== fix done =="'
+          printf 'y\n' | timeout 150 gh codespace ssh -c "$CS" -- 'echo "== before =="; pgrep -af -x kimi-code; pkill -9 -f "^bash -c pgrep -x kimi-code" 2>/dev/null; pkill -9 -x kimi-code 2>/dev/null; pkill -9 -f "^bash start-loop" 2>/dev/null; sleep 3; cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 < /dev/null & sleep 10; echo "== after =="; pgrep -af -x kimi-code; echo "== log tail =="; tail -5 /tmp/start-loop.log; echo "== fix done =="'
