@@ -13,6 +13,8 @@ on:
           - prov
           - fixprov
           - fixzen
+          - testdeep
+          - fixdef
 permissions:
   contents: read
 jobs:
@@ -117,4 +119,51 @@ jobs:
             echo "== log tail =="
             tail -5 /tmp/start-loop.log
             echo "== fixzen done =="
+          '
+      - name: Testdeep - single deepseek free live test
+        if: inputs.action == 'testdeep'
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 150 gh codespace ssh -c "$CS" -- '
+            CFG=/home/node/.kimi-code/config.toml
+            [ -f "$CFG" ] || { echo "no config"; exit 0; }
+            KEY=$(sed -n "/\[providers\..*opencode-zen/,/^\[/p" "$CFG" | grep -m1 -E "api[_-]?key" | sed -E "s/.*=\s*\"?([^\"]+)\"/\1/")
+            echo "key_len=${#KEY}"
+            for MID in deepseek-v4-flash-free nemotron-3-ultra-free; do
+              RESP=$(curl -s -i --max-time 45 https://opencode.ai/zen/v1/chat/completions -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d "{\"model\":\"$MID\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"max_tokens\":5}")
+              echo "== $MID =="
+              echo "$RESP" | grep -iE "^x-ratelimit|^retry-after|rate limit|payment method" | head -6
+              echo "$RESP" | grep -aE '"id"|"content"|"error"' | tail -c 300
+              echo
+            done
+            echo "== testdeep done =="
+          '
+      - name: Fixdef - set default model to nemotron free
+        if: inputs.action == 'fixdef'
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 150 gh codespace ssh -c "$CS" -- '
+            CFG=/home/node/.kimi-code/config.toml
+            [ -f "$CFG" ] || { echo "no config"; exit 0; }
+            cp "$CFG" "$CFG.bak.$(date +%s)"
+            echo "== before =="
+            grep -n "^default_model" "$CFG"
+            sed -i -E "s/^default_model\s*=.*/default_model = \"opencode-zen-nemotron\"/" "$CFG"
+            echo "== after =="
+            grep -n "^default_model" "$CFG"
+            echo "== restarting daemon =="
+            pkill -9 -x kimi-code 2>/dev/null
+            pkill -9 -f "^bash start-loop" 2>/dev/null
+            sleep 3
+            cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 < /dev/null &
+            sleep 12
+            echo "== daemon =="
+            pgrep -af -x kimi-code
+            echo "== url check =="
+            curl -s -o /dev/null -w "ui_http=%{http_code}\n" --max-time 20 https://supreme-space-orbit-4qgppx6xq7r7cjwxw-10002.app.github.dev/
+            echo "== log tail =="
+            tail -5 /tmp/start-loop.log
+            echo "== fixdef done =="
           '
