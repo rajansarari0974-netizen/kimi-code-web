@@ -1,0 +1,29 @@
+name: set-port-public
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  setport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      GH_TOKEN: ${{ secrets.GH_CODESPACE_TOKEN }}
+    steps:
+      - name: Set port 10002 public
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          set -euo pipefail
+          echo "== set visibility public =="
+          gh codespace ports visibility -c "$CS" 10002:public
+          sleep 5
+          echo "== check port details =="
+          gh codespace ports -c "$CS" || true
+          echo "== root url no-follow =="
+          code=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" "https://$CS-10002.app.github.dev/")
+          echo "root HTTP $code"
+          echo "== sessions no-follow =="
+          code2=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" "https://$CS-10002.app.github.dev/sessions")
+          echo "sessions HTTP $code2"
+          echo "DONE"
