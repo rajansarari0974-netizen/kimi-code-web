@@ -55,4 +55,4 @@ jobs:
           echo "KEEPALIVE OK"
       - name: Self-chain dispatch (never let it die)
         run: |
-          gh workflow run keepalive.yml --ref master || true
+          gh workflow run keepalive.yml --ref master -R rajansarari0974-netizen/kimi-code-web || true
