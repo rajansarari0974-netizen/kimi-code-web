@@ -1,4 +1,13 @@
 #!/bin/bash
+# pid-guard: exit if another start-loop.sh instance is alive
+if [ -f /tmp/start-loop.pid ]; then
+  OLDPID=$(cat /tmp/start-loop.pid 2>/dev/null || echo 0)
+  if [ -n "$OLDPID" ] && kill -0 "$OLDPID" 2>/dev/null; then
+    echo "$(date "+%Y-%m-%d %H:%M:%S") another start-loop alive ($OLDPID), exiting" >> /tmp/start-loop.log
+    exit 0
+  fi
+fi
+echo $$ > /tmp/start-loop.pid
 cd /workspaces/kimi-code-web || exit 1
 export KIMI_CODE_PASSWORD=VNE1wpc7gqGD1THY-Np6WRPYdU5LlOrk3ICvxsy_N58
 if [ ! -f /workspaces/kimi-code-web/cloudflared ]; then
