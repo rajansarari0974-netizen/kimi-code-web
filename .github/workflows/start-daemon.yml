@@ -29,16 +29,9 @@ jobs:
             done
             [ "$state" = "Available" ] || { echo "codespace not Available"; exit 1; }
           fi
-          echo "== ssh: clean stale procs and start start-loop.sh =="
+          echo "== ssh: launch start-loop.sh (self-guarded, no pkill) =="
           printf 'y\n' | timeout 300 gh codespace ssh -c "$CS" -- '
             set -euo pipefail
-            echo "== before =="
-            pgrep -af "[s]tart-loop.sh" || echo "no start-loop"
-            pgrep -af "[k]imi-code" || echo "no kimi"
-            pkill -f "[s]tart-loop.sh" 2>/dev/null || true
-            pkill -x kimi-code 2>/dev/null || true
-            pkill -f "[c]loudflared tunnel" 2>/dev/null || true
-            sleep 2
             cd /workspaces/kimi-code-web || { echo "REPO MISSING"; exit 1; }
             ls -la node_modules/.bin/kimi 2>/dev/null || echo "KIMI BIN MISSING"
             rm -f /tmp/start-loop.log /tmp/kimi-10002.log /tmp/start-loop.out
