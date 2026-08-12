@@ -1,0 +1,34 @@
+name: diag-session-run
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  runfix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GH_CODESPACE_TOKEN }}
+    steps:
+      - name: Diag session_0be6a714 - files + daemon log + config
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          printf 'y\n' | timeout 240 gh codespace ssh -c "$CS" -- '
+            echo "== session dir =="
+            ls -la /home/node/.kimi-code/sessions/wd_root_*/session_0be6a714-8dbc-46b4-b641-e6ccbc611a63/agents/main/ 2>&1 | head -20
+            echo "== wire.jsonl tail =="
+            tail -8 /home/node/.kimi-code/sessions/wd_root_*/session_0be6a714-8dbc-46b4-b641-e6ccbc611a63/agents/main/wire.jsonl 2>&1 | head -c 3000; echo
+            echo "== daemon log tail =="
+            tail -60 /tmp/kimi-10002.log 2>&1
+            echo "== config inferx models =="
+            grep -nE "^\[models\.inferx" /home/node/.kimi-code/config.toml 2>&1 | head -12
+            echo "== config providers inferx =="
+            grep -nA3 "^\[providers\.inferx\]" /home/node/.kimi-code/config.toml 2>&1 | head -8
+            echo "== processes =="
+            pgrep -af -x kimi-code
+            echo "== port =="
+            (ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null) | grep -E "10002" | head -3
+            echo "== diag done =="
+            exit 0
+          '
