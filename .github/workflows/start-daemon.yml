@@ -1,0 +1,61 @@
+name: start-daemon
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ secrets.GH_CODESPACE_TOKEN }}
+    steps:
+      - name: Start kimi daemon on codespace
+        env:
+          CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
+        run: |
+          set -euo pipefail
+          echo "== state check =="
+          state=$(gh api "user/codespaces/$CS" --jq .state || echo unknown)
+          echo "state=$state"
+          if [ "$state" != "Available" ]; then
+            echo "== starting codespace =="
+            gh api -X POST "user/codespaces/$CS/start" >/dev/null || true
+            for i in $(seq 1 24); do
+              sleep 10
+              state=$(gh api "user/codespaces/$CS" --jq .state)
+              echo "poll state=$state"
+              [ "$state" = "Available" ] && break
+            done
+            [ "$state" = "Available" ] || { echo "codespace not Available"; exit 1; }
+          fi
+          echo "== ssh: start daemon via start-loop.sh =="
+          printf 'y\n' | timeout 240 gh codespace ssh -c "$CS" -- '
+            echo "== current procs before =="
+            pgrep -af -x kimi-code || echo "no kimi running"
+            cd /workspaces/kimi-code-web || exit 1
+            if pgrep -f "start-loop.sh" >/dev/null; then
+              echo "start-loop already running, checking daemon"
+            else
+              nohup bash start-loop.sh >/tmp/start-loop.out 2>&1 < /dev/null &
+              echo "start-loop launched pid $!"
+            fi
+            sleep 30
+            echo "== procs after 30s =="
+            pgrep -af -x kimi-code || echo "STILL NO kimi"
+            tail -25 /tmp/start-loop.out 2>&1 || true
+            tail -15 /tmp/start-loop.log 2>&1 || true
+            tail -15 /tmp/kimi-10002.log 2>&1 || true
+            (ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null) | grep 10002 | head -3 || echo "no listener on 10002"
+            exit 0
+          '
+          echo "== url check =="
+          for i in 1 2 3 4 5 6 7 8; do
+            code=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" "https://$CS-10002.app.github.dev/" || echo ERR)
+            echo "attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "URL OK"
+              break
+            fi
+            sleep 10
+          done
