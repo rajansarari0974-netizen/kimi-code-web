@@ -15,10 +15,12 @@ concurrency:
 jobs:
   keepalive:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 25
     env:
       GH_TOKEN: ${{ secrets.GH_CODESPACE_TOKEN }}
     steps:
+      - name: Cadence wait (self-chain)
+        run: sleep 600
       - name: Ping codespace and self-heal
         env:
           CS: supreme-space-orbit-4qgppx6xq7r7cjwxw
@@ -42,7 +44,7 @@ jobs:
             fi
           fi
           echo "== ssh ping + kimi watchdog =="
-          printf 'y\n' | timeout 120 gh codespace ssh -c "$CS" -- 'pgrep -x kimi-code >/dev/null || (cd /workspaces/kimi-code-web && setsid nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 </dev/null &); echo keepalive-$(date +%H:%M)'
+          printf 'y\n' | timeout 120 gh codespace ssh -c "$CS" -- 'pgrep -x kimi-code >/dev/null || (cd /workspaces/kimi-code-web && setsid nohup bash start-loop.sh >>/tmp/start-loop.out 2>&1 </dev/null &); echo keepalive-$(date +%H:%M)'
           echo "== url check =="
           code=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" -L "https://$CS-10002.app.github.dev/sessions" || echo ERR)
           echo "sessions HTTP $code"
@@ -51,3 +53,6 @@ jobs:
             exit 1
           fi
           echo "KEEPALIVE OK"
+      - name: Self-chain dispatch (never let it die)
+        run: |
+          gh workflow run keepalive.yml --ref master || true
