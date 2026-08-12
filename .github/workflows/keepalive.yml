@@ -54,5 +54,7 @@ jobs:
           fi
           echo "KEEPALIVE OK"
       - name: Self-chain dispatch (never let it die)
+        env:
+          GH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
         run: |
-          gh workflow run keepalive.yml --ref master -R rajansarari0974-netizen/kimi-code-web || true
+          gh workflow run keepalive.yml --ref master -R rajansarari0974-netizen/kimi-code-web
