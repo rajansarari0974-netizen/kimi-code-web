@@ -42,8 +42,12 @@ jobs:
             fi
           fi
           echo "== ssh ping + kimi watchdog =="
-          printf 'y\n' | timeout 120 gh codespace ssh -c "$CS" -- 'pgrep -x kimi-code >/dev/null || (cd /workspaces/kimi-code-web && nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 &); echo keepalive-$(date +%H:%M)'
-          echo "== port visibility =="
-          gh codespace ports visibility -c "$CS" 10002:public || true
+          printf 'y\n' | timeout 120 gh codespace ssh -c "$CS" -- 'pgrep -x kimi-code >/dev/null || (cd /workspaces/kimi-code-web && setsid nohup bash start-loop.sh >/tmp/start-loop.log 2>&1 </dev/null &); echo keepalive-$(date +%H:%M)'
           echo "== url check =="
-          curl -s --max-time 20 -o /dev/null -w "URL HTTP %{http_code}\n" "https://$CS-10002.app.github.dev/" || echo "URL unreachable"
+          code=$(curl -s --max-time 20 -o /dev/null -w "%{http_code}" -L "https://$CS-10002.app.github.dev/sessions" || echo ERR)
+          echo "sessions HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "URL not healthy"
+            exit 1
+          fi
+          echo "KEEPALIVE OK"
